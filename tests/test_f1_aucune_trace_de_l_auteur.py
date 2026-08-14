@@ -284,6 +284,15 @@ EXCEPTIONS: tuple[Exception_, ...] = (
         "Elle nomme le titulaire du projet, jamais un utilisateur ni une "
         "installation.",
     ),
+    Exception_(
+        "societe", "README.md",
+        "La signature de pied de page : « un projet KIZA », avec le lien du "
+        "mainteneur. Tout projet ouvert nomme qui le porte — c'est ce qui "
+        "permet d'y adresser un rapport, une question ou une reprise. "
+        "Elle apparaît UNE fois, en pied de page, et ne dit rien du cerveau "
+        "de qui que ce soit : le lecteur qui installe n'hérite ni d'une "
+        "taxonomie, ni d'un chemin, ni d'une valeur par défaut.",
+    ),
     # RETIRÉE — `config/scopes.example.toml` / motif « societe ».
     #
     # Elle disait : « C'est la taxonomie de l'auteur, montrée comme un exemple

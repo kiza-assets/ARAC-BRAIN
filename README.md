@@ -955,3 +955,11 @@ C'est le piège numéro un, et il ne fait aucun bruit.
 [`docs/COMMENT-IL-CREE-SES-SCOPES.md`](docs/COMMENT-IL-CREE-SES-SCOPES.md) — **seul
 endroit du dépôt qui porte ce chiffre**, pour qu'aucune copie ne diverge. Le mécanisme
 exact — y compris ce dont un tel atome n'est **pas** exclu — est au § 4 du même document.*
+
+---
+
+<p align="center">
+  <img src="assets/logo.svg" alt="" width="40" height="40"><br>
+  <strong>ARAC BRAIN</strong> — un projet <a href="https://linkedin.com/in/renlew">KIZA</a><br>
+  <sub>MIT · <a href="docs/LIMITES-CONNUES.md">Limites connues</a> · <a href="docs/DECISIONS-ARCHITECTURE.md">Décisions d'architecture</a> · <a href="SECURITY.md">Sécurité</a></sub>
+</p>
