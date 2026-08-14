@@ -1,0 +1,54 @@
+name: Question
+description: La documentation ne répond pas, ou répond de façon ambiguë.
+title: "[question] "
+labels: ["question", "documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Une question est un rapport de première classe, pas un dérangement.**
+
+        Si vous avez dû lire le code pour comprendre un comportement, la documentation
+        a échoué — et c'est un défaut réparable. Toute question qui aboutit devient une
+        section de document ; c'est comme ça que ce dépôt apprend à se faire comprendre.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Votre question
+      placeholder: >-
+        Pourquoi un atome posé sur une racine n'apparaît-il jamais dans un rappel ?
+        La règle est répétée partout, mais je ne vois nulle part ce qui l'applique.
+    validations:
+      required: true
+
+  - type: textarea
+    id: cherche
+    attributes:
+      label: Où vous avez déjà cherché
+      description: >-
+        Ce n'est pas une formalité : ce que vous avez lu **sans y trouver la réponse**
+        est exactement l'endroit où la réponse manque.
+      placeholder: |
+        - docs/CONCEPTS.md, section sur les scopes
+        - config/scopes.example.toml
+        - j'ai fini par lire app/routers/atoms.py
+    validations:
+      required: true
+
+  - type: textarea
+    id: attendu
+    attributes:
+      label: Ce que vous vous attendiez à lire
+      description: Même approximatif — c'est souvent le meilleur brouillon du correctif.
+
+  - type: dropdown
+    id: moment
+    attributes:
+      label: À quel moment la question s'est posée
+      options:
+        - avant d'installer — j'évalue le projet
+        - pendant l'installation
+        - le premier jour
+        - après quelques semaines d'usage
+        - en lisant le code pour contribuer

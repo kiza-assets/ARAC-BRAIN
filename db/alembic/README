@@ -1,0 +1,60 @@
+# Migrations Alembic — ARAC
+
+Ce dossier contient les révisions Alembic pour le schéma `arac`.
+
+## Doctrine
+
+- **Pas d'`--autogenerate`** : `target_metadata = None` dans `env.py`. Les
+  migrations sont écrites manuellement avec `op.execute("DDL brut")` plutôt
+  que via des modèles SQLAlchemy.
+- **Format des fichiers** : `NNNN_short_slug.py` (ex: `0001_baseline_phase1b.py`,
+  `0002_add_table_x.py`). Pas de timestamp dans le nom (cf `file_template`
+  dans `alembic.ini`).
+- **Schéma de versionning** : la table `alembic_version` vit dans le schéma
+  `arac` (pas `public`) — cf `version_table_schema='arac'` dans `env.py`.
+- **Driver** : `psycopg2-binary` (synchrone) en Phase 1b.
+  Migration prévue Phase 2 vers `psycopg[binary]` (psycopg3, async).
+
+Le DDL est écrit à la main : l'autogenerate d'Alembic propose de supprimer
+ce qu'il ne comprend pas, et une migration doit dire exactement ce qu'elle fait.
+
+## Commandes courantes (toutes en sudo)
+
+**Ces lignes ont longtemps renvoyé à un wrapper `scripts/alembic_run.sh`.** Ce
+fichier n'existe pas et n'a jamais existé dans ce dépôt : le geste prescrit
+était introuvable, et il l'était au pire moment — celui où une migration vient
+d'échouer. Ce qui suit est ce que le bootstrap fait réellement
+(`bootstrap/lib/database.sh`).
+
+Le chemin normal, celui qui n'exige de vous aucune variable :
+
+```bash
+sudo ./bootstrap/bootstrap.sh --from migrations
+```
+
+À la main, quand on veut une autre sous-commande qu'`upgrade head`. Le DSN
+vient du coffre de CE cerveau — il porte le port de SA grappe, et un DSN
+emprunté à un autre cerveau migre la base d'un autre :
+
+```bash
+cd "$ARAC_HOME"
+DSN="$(sudo grep '^DATABASE_URL_ADMIN=' "$ARAC_ENV_FILE" | cut -d= -f2-)"
+
+# État courant
+sudo DATABASE_URL="$DSN" .venv/bin/alembic current
+sudo DATABASE_URL="$DSN" .venv/bin/alembic history
+
+# Créer une nouvelle révision (à éditer manuellement avec op.execute)
+sudo DATABASE_URL="$DSN" .venv/bin/alembic revision -m "add table foo"
+
+# Appliquer / défaire
+sudo DATABASE_URL="$DSN" .venv/bin/alembic upgrade head
+sudo DATABASE_URL="$DSN" .venv/bin/alembic downgrade -1
+
+# Stamp (ancrer un état sans rejouer le DDL)
+sudo DATABASE_URL="$DSN" .venv/bin/alembic stamp <revision>
+```
+
+`ARAC_ENV_FILE` est le coffre du cerveau :
+`/etc/arac/<votre-base>/arac.env` pour une installation faite par le
+bootstrap, en 0700 root. Aucun secret ni URL en dur dans `alembic.ini`.

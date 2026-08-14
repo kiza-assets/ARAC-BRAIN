@@ -1,0 +1,239 @@
+# ============================================================================
+# LA TAXONOMIE DE VOTRE CERVEAU
+# ============================================================================
+#
+# Ce fichier décide de la forme de votre mémoire. C'est le seul endroit où
+# vous déclarez les domaines dans lesquels votre cerveau rangera ce qu'il
+# apprend — et c'est probablement la décision la plus structurante de toute
+# l'installation.
+#
+# Prenez le temps de le lire avant de le remplir. Changer un scope plus tard
+# est possible, mais coûte une migration : les atomes déjà rangés doivent être
+# déplacés, et un scope supprimé emporte le savoir qu'il contenait.
+#
+# ---------------------------------------------------------------------------
+# LES DEUX RÈGLES QUI COMPTENT
+# ---------------------------------------------------------------------------
+#
+# 1. LES ATOMES VIVENT SUR LES FEUILLES, PAS SUR LES RACINES.
+#    Une racine est un conteneur ; une feuille est un rangement. Un atome posé
+#    directement sur une racine devient ORPHELIN : il reste en base, et une
+#    question qui lui ressemble peut encore le faire remonter par similarité
+#    pure — mais il est exclu de tout ce que le cerveau construit AU-DESSUS du
+#    rangement. Pas d'état courant, pas de place dans la vue des scopes, pas de
+#    comptage dans la couverture. Et une recherche qui précise un domaine ne le
+#    trouvera jamais : l'égalité de scope est stricte, demander
+#    « travail/finance » ne rend pas un atome rangé sur « travail ».
+#    C'est le piège le plus coûteux du système : sur le cerveau de référence,
+#    près d'un atome actif sur onze est tombé dedans et n'en est jamais
+#    ressorti de lui-même.
+#
+# 2. UN SCOPE NE S'INVENTE PAS À LA VOLÉE.
+#    Un scope hors de cette liste est refusé par l'API (erreur 422) et par la
+#    base (clé étrangère). C'est volontaire : sans cette rigidité, la mémoire
+#    se fragmente en dizaines de catégories jumelles et le rappel se dilue.
+#
+# ---------------------------------------------------------------------------
+# COMMENT BIEN CHOISIR
+# ---------------------------------------------------------------------------
+#
+# Une bonne racine correspond à un MONDE de votre vie — quelque chose dont
+# vous parlez sans jamais confondre avec le reste. Cinq à huit racines
+# suffisent presque toujours, trois à six feuilles chacune.
+#
+# L'ordre de grandeur n'est donné qu'à UN endroit — docs/COMMENT-IL-CREE-SES-SCOPES.md,
+# §5 — et tout le reste du dépôt y renvoie. Un chiffre recopié à trois
+# endroits finit toujours par diverger.
+#
+# Une bonne feuille est assez précise pour qu'un atome y trouve sa place sans
+# hésitation, et assez large pour ne pas rester vide. Si vous hésitez entre
+# deux feuilles pour un même savoir, elles sont probablement une seule.
+#
+# Ordre de grandeur observé : un cerveau actif accumule ~150 atomes par mois.
+# Une feuille qui n'atteint pas 10 atomes en six mois n'aurait pas dû exister ;
+# une feuille qui dépasse 250 atomes gagnerait à être scindée.
+#
+# ---------------------------------------------------------------------------
+# APRÈS MODIFICATION
+# ---------------------------------------------------------------------------
+#
+#     ./bootstrap/bootstrap.sh --scopes-only
+#
+# régénère l'énumération Python, la table `arac.scopes` et la migration
+# correspondante. La commande refuse de supprimer un scope qui contient encore
+# des atomes : elle vous dit lesquels et vous laisse décider.
+#
+# ============================================================================
+
+
+[taxonomy]
+# Profondeur maximale d'un chemin de scope. 2 = "racine/feuille".
+# 3 autorise "racine/branche/feuille" ; au-delà, l'expérience montre que
+# personne ne retrouve plus rien.
+max_depth = 2
+
+# Langue des libellés affichés dans le cockpit ("fr" ou "en").
+label_language = "fr"
+
+
+# ============================================================================
+# LES RACINES — les mondes de votre vie
+# ============================================================================
+#
+# `key`         identifiant technique : minuscules, chiffres, tirets. Immuable.
+# `label`       ce qui s'affiche dans le cockpit.
+# `description` à quoi sert ce monde. Sert aussi au routage automatique.
+
+[[root]]
+key = "travail"
+label = "TRAVAIL"
+description = "Ce qui touche à votre activité professionnelle principale."
+
+[[root]]
+key = "projets"
+label = "PROJETS"
+description = "Les chantiers en cours, personnels ou professionnels, qui ont un début et une fin."
+
+[[root]]
+key = "perso"
+label = "PERSONNEL"
+description = "Votre vie privée : lieux, personnes, santé, administratif."
+
+[[root]]
+key = "outillage"
+label = "OUTILLAGE"
+description = "Vos outils, votre infrastructure, vos automatisations."
+
+[[root]]
+key = "savoir"
+label = "SAVOIR"
+description = "Ce que vous apprenez : lectures, idées, apprentissages transverses."
+
+
+# ============================================================================
+# LES FEUILLES — là où les atomes se rangent réellement
+# ============================================================================
+#
+# `root` doit correspondre à une `key` de racine déclarée ci-dessus.
+# Le chemin final est "racine/feuille" : c'est lui qui est stocké en base.
+
+[[leaf]]
+root = "travail"
+key = "strategie"
+label = "Stratégie"
+description = "Décisions d'orientation, arbitrages, positionnement."
+
+[[leaf]]
+root = "travail"
+key = "operations"
+label = "Opérations"
+description = "Le quotidien : processus, incidents, fournisseurs, clients."
+
+[[leaf]]
+root = "travail"
+key = "finance"
+label = "Finance"
+description = "Budgets, marges, trésorerie, fiscalité professionnelle."
+
+[[leaf]]
+root = "projets"
+key = "en-cours"
+label = "En cours"
+description = "Les projets actifs. Scindez-le en feuilles dédiées dès qu'un projet dépasse 50 atomes."
+
+[[leaf]]
+root = "projets"
+key = "archives"
+label = "Archivés"
+description = "Projets terminés ou abandonnés, dont le savoir reste utile."
+
+[[leaf]]
+root = "perso"
+key = "logement"
+label = "Logement"
+description = "Votre lieu de vie : travaux, équipements, contraintes, artisans."
+
+[[leaf]]
+root = "perso"
+key = "administratif"
+label = "Administratif"
+description = "Papiers, échéances, contrats, démarches."
+
+[[leaf]]
+root = "perso"
+key = "sante"
+label = "Santé"
+description = "Suivi, praticiens, décisions médicales."
+
+[[leaf]]
+root = "outillage"
+key = "infrastructure"
+label = "Infrastructure"
+description = "Serveurs, réseau, sauvegardes, hébergement."
+
+[[leaf]]
+root = "outillage"
+key = "automatisations"
+label = "Automatisations"
+description = "Scripts, tâches planifiées, intégrations."
+
+[[leaf]]
+root = "outillage"
+key = "assistants"
+label = "Assistants"
+description = "Configuration de vos outils d'IA, prompts, conventions de travail."
+
+[[leaf]]
+root = "savoir"
+key = "apprentissages"
+label = "Apprentissages"
+description = "Ce que vous avez compris et qui vous resservira."
+
+[[leaf]]
+root = "savoir"
+key = "references"
+label = "Références"
+description = "Sources externes gardées en contexte : livres, articles, contacts."
+
+[[leaf]]
+root = "savoir"
+key = "idees"
+label = "Idées"
+description = "Intuitions brutes, pas encore mûres, à ne pas perdre."
+
+
+# ============================================================================
+# À QUOI RESSEMBLE UNE TAXONOMIE QUI A VÉCU
+# ============================================================================
+#
+# La liste ci-dessus est neutre à dessein : elle doit convenir à peu près à
+# tout le monde, donc elle ne ressemble à personne. Ce n'est pas un défaut,
+# c'est un point de départ.
+#
+# Au bout de quelques mois, une taxonomie utile ne ressemble plus à ça. Elle
+# se met à porter des noms propres — celui de votre activité, d'un lieu, d'un
+# chantier, d'une personne — parce que c'est ainsi que vous pensez réellement.
+# Une boulangère finit avec une racine « fournil » ; un développeur avec le nom
+# de son produit ; quelqu'un qui rénove une maison avec une feuille par corps
+# de métier. Aucune de ces racines n'existe dans la liste générique, et c'est
+# précisément le signe que ça marche.
+#
+# Voici la forme que prend cette dérive — l'exemple est inventé, et il doit
+# le rester :
+#
+#   [[root]] key = "atelier"                          # le nom de son activité
+#   [[leaf]] root = "atelier"  key = "caisse"         #  ~250 atomes
+#   [[leaf]] root = "atelier"  key = "boutique-en-ligne"
+#   [[leaf]] root = "atelier"  key = "publicite"
+#
+#   [[root]] key = "renovation"                       # un chantier au long cours
+#   [[leaf]] root = "renovation" key = "devis"
+#   [[leaf]] root = "renovation" key = "financement"
+#
+# Ordre de grandeur observé sur un cerveau suivi huit mois : six racines,
+# trente-neuf feuilles, la plus grosse autour de 250 atomes.
+#
+# N'ESSAYEZ PAS de deviner aujourd'hui la taxonomie que vous aurez dans six
+# mois. Partez de la liste générique, laissez votre cerveau se remplir, et
+# scindez quand une feuille devient trop grosse. Une taxonomie s'observe ;
+# elle ne se planifie pas.

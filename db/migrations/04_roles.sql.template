@@ -1,0 +1,100 @@
+-- ============================================================================
+-- ARAC — Phase 1b — 04_roles.sql.template
+-- 4 rôles PostgreSQL avec privilèges granulaires (V2 §2.8 + plan Lightning §1b.5)
+--
+-- ⚠️ TEMPLATE — ce fichier est versionné, sans secrets.
+-- Les passwords sont injectés au runtime via scripts/apply_roles.sh qui lit
+-- $ARAC_HOME/secrets/roles.txt (mode 0600, jamais versionné).
+--
+-- Placeholders substitués par sed dans apply_roles.sh :
+--   __ARAC_ADMIN_PWD__     →  password __ARAC_ROLE_ADMIN__
+--   __ARAC_APP_PWD__       →  password __ARAC_ROLE_APP__
+--   __ARAC_AGENT_PWD__     →  password __ARAC_ROLE_AGENT__
+--   __ARAC_READONLY_PWD__  →  password __ARAC_ROLE_READONLY__
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- LES NOMS DE RÔLES SONT DES MARQUEURS, PAS DES CONSTANTES.
+--
+-- Un rôle PostgreSQL est GLOBAL AU CLUSTER, pas propre à une base : `arac_app`
+-- du cerveau A **est** `arac_app` du cerveau B. Ce fichier portait ces cinq
+-- noms en dur ; le rejouer à côté d'un cerveau existant réencodait ses cinq
+-- mots de passe, dont les services tombaient au redémarrage suivant — sans
+-- erreur, sans trace, et sans effet visible avant plusieurs jours. C'est
+-- l'incident exact qui a détruit le cerveau de production de l'auteur.
+--
+-- La convention du produit est `arac_<base>_<fonction>` : le bootstrap la
+-- calcule à l'étape 2 et l'applique lui-même (bootstrap/lib/database.sh). Ce
+-- fichier est du DDL de RÉFÉRENCE ; si vous le rejouez à la main, substituez
+-- d'abord les marqueurs, sinon vous écrasez les rôles du voisin.
+--
+--   __ARAC_ROLE_ADMIN__ __ARAC_ROLE_APP__ __ARAC_ROLE_AGENT__
+--   __ARAC_ROLE_READONLY__ __ARAC_ROLE_BACKUP__   les cinq rôles de CE cerveau
+--   __ARAC_DB__                                   le nom de SA base
+-- ----------------------------------------------------------------------------
+
+\set ON_ERROR_STOP on
+
+BEGIN;
+
+-- ----------------------------------------------------------------------------
+-- 1. __ARAC_ROLE_ADMIN__ — DDL, migrations Alembic, GRANT management
+-- ----------------------------------------------------------------------------
+CREATE ROLE __ARAC_ROLE_ADMIN__ WITH LOGIN PASSWORD '__ARAC_ADMIN_PWD__';
+GRANT ALL PRIVILEGES ON SCHEMA arac TO __ARAC_ROLE_ADMIN__;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA arac TO __ARAC_ROLE_ADMIN__;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA arac TO __ARAC_ROLE_ADMIN__;
+GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA arac TO __ARAC_ROLE_ADMIN__;
+
+-- Privilèges par défaut pour les futurs objets créés par postgres
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA arac
+    GRANT ALL PRIVILEGES ON TABLES TO __ARAC_ROLE_ADMIN__;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA arac
+    GRANT ALL PRIVILEGES ON SEQUENCES TO __ARAC_ROLE_ADMIN__;
+
+-- ----------------------------------------------------------------------------
+-- 2. __ARAC_ROLE_APP__ — runtime FastAPI (CRUD, pas de DDL)
+-- ----------------------------------------------------------------------------
+CREATE ROLE __ARAC_ROLE_APP__ WITH LOGIN PASSWORD '__ARAC_APP_PWD__';
+GRANT USAGE ON SCHEMA arac TO __ARAC_ROLE_APP__;
+GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA arac TO __ARAC_ROLE_APP__;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA arac TO __ARAC_ROLE_APP__;
+
+-- Privilèges par défaut pour les futurs objets
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA arac
+    GRANT SELECT, INSERT, UPDATE ON TABLES TO __ARAC_ROLE_APP__;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA arac
+    GRANT USAGE, SELECT ON SEQUENCES TO __ARAC_ROLE_APP__;
+
+-- ----------------------------------------------------------------------------
+-- 3. __ARAC_ROLE_AGENT__ — agents/crons (SELECT all + INSERT restreints)
+-- ----------------------------------------------------------------------------
+-- Contrainte applicative côté code Python : agents ne peuvent insérer que
+-- kinds ∈ {alert, validation, contradiction, suggestion}, audit_source =
+-- 'autonomous_agent_suggest', confidence = 'agent_suggest'.
+CREATE ROLE __ARAC_ROLE_AGENT__ WITH LOGIN PASSWORD '__ARAC_AGENT_PWD__';
+GRANT USAGE ON SCHEMA arac TO __ARAC_ROLE_AGENT__;
+GRANT SELECT ON ALL TABLES IN SCHEMA arac TO __ARAC_ROLE_AGENT__;
+GRANT INSERT ON arac.memory_atoms            TO __ARAC_ROLE_AGENT__;
+GRANT INSERT ON arac.audit_links             TO __ARAC_ROLE_AGENT__;
+GRANT INSERT ON arac.audit_log               TO __ARAC_ROLE_AGENT__;
+GRANT INSERT ON arac.nodes_heartbeat_history TO __ARAC_ROLE_AGENT__;
+GRANT UPDATE (last_heartbeat) ON arac.nodes  TO __ARAC_ROLE_AGENT__;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA arac TO __ARAC_ROLE_AGENT__;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA arac
+    GRANT SELECT ON TABLES TO __ARAC_ROLE_AGENT__;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA arac
+    GRANT USAGE, SELECT ON SEQUENCES TO __ARAC_ROLE_AGENT__;
+
+-- ----------------------------------------------------------------------------
+-- 4. __ARAC_ROLE_READONLY__ — SELECT only (debug, BI, exports manuels humains)
+-- ----------------------------------------------------------------------------
+CREATE ROLE __ARAC_ROLE_READONLY__ WITH LOGIN PASSWORD '__ARAC_READONLY_PWD__';
+GRANT USAGE ON SCHEMA arac TO __ARAC_ROLE_READONLY__;
+GRANT SELECT ON ALL TABLES IN SCHEMA arac TO __ARAC_ROLE_READONLY__;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA arac
+    GRANT SELECT ON TABLES TO __ARAC_ROLE_READONLY__;
+
+COMMIT;

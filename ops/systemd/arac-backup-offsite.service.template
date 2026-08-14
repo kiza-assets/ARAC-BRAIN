@@ -1,0 +1,22 @@
+# GABARIT — cf ops/systemd/README.md
+# La copie hors site. Sort en 0 quand la destination dort : c'est voulu.
+[Unit]
+Description=ARAC — copie chiffrée hors site
+Documentation=file://__ARAC_HOME__/docs/SAUVEGARDE.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=__ARAC_USER__
+Group=__ARAC_GROUP__
+WorkingDirectory=__ARAC_HOME__
+EnvironmentFile=__ARAC_ENV_FILE__
+Environment=ARAC_HOME=__ARAC_HOME__
+ExecStart=/usr/bin/env bash __ARAC_HOME__/ops/backup_offsite.sh
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=__ARAC_BACKUP_STATE__
+TimeoutStartSec=1800

@@ -1,0 +1,114 @@
+# ============================================================================
+# CE QUI NE DOIT JAMAIS PARTIR DANS UN DÉPÔT
+# ============================================================================
+#
+# Trois familles, et il faut savoir les distinguer :
+#
+#   1. LES SECRETS       — les publier est irréversible. Un jeton commité est
+#                          un jeton à révoquer, même après suppression : il
+#                          reste dans l'historique de git, pour toujours.
+#   2. VOTRE CERVEAU     — votre taxonomie, votre identité, vos projets. Rien
+#                          d'ici n'appartient au framework.
+#   3. LES ENGENDRÉS     — ce qui naît de (2). Les versionner ferait diverger
+#                          la source et son produit.
+# ============================================================================
+
+
+# --- 1. SECRETS -------------------------------------------------------------
+# Aucune exception, jamais. `.env.example` est explicitement réadmis plus bas
+# parce qu'il ne contient QUE des noms de variables.
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+*_rsa
+*_ed25519
+node-tokens.txt
+
+
+# --- 2. VOTRE CERVEAU -------------------------------------------------------
+# Ces fichiers naissent de l'entretien d'installation. Ils décrivent VOTRE
+# cerveau : ni le dépôt, ni personne d'autre n'a à les connaître.
+config/brain.toml
+config/scopes.toml
+config/projects.toml
+config/sensitivity.toml
+config/scope_suggestions.toml
+config/constitution.md
+# Les modèles commentés, eux, SONT versionnés :
+!config/*.example.toml
+
+
+# --- 3. ARTEFACTS ENGENDRÉS -------------------------------------------------
+# Produits par `bootstrap/generate_scopes.py` à partir de `config/scopes.toml`.
+# La source de vérité est le TOML ; ceci n'en est que la traduction.
+app/schemas/scope_generated.py
+db/seeds/scopes.sql
+
+
+# --- L'ÉTAT VIVANT ----------------------------------------------------------
+# Ce que le cerveau écrit en tournant. Utile, jamais versionné : ces dossiers
+# n'ont de sens que sur la machine qui les a produits.
+logs/
+var/
+data/
+staging/
+backups/
+*.log
+
+
+# --- CE QU'UNE INSTALLATION LAISSE DANS LE DÉPÔT ----------------------------
+# Deux fichiers, et ils ne se ressemblent pas :
+#
+#   .bootstrap-install*.state  l'AVANCEMENT du bootstrap, nommé d'après votre
+#       base (bootstrap/lib/core.sh, ARAC_ETAT). Publié, il fait hériter celui
+#       qui clone de l'avancement de quelqu'un d'autre : son bootstrap saute
+#       en silence les étapes « déjà accomplies » — la base, les migrations,
+#       les secrets, les services — et n'affiche plus que quatre en-têtes
+#       d'étape sur onze. Une leçon sautée est une leçon perdue.
+#
+#   .bootstrap-state.json      l'ENTRETIEN interrompu (bootstrap/wizard.py),
+#       c'est-à-dire vos réponses : votre prénom, le nom de votre cerveau,
+#       l'identifiant de votre poste, votre taxonomie. Le publier livre votre
+#       identité en même temps que votre avancement.
+#
+# Le motif, pas le nom exact : le fichier d'avancement porte le nom de VOTRE
+# base, qu'aucune règle littérale ne saurait prévoir.
+.bootstrap-install*.state
+.bootstrap-state.json
+
+
+# --- PYTHON -----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
+
+
+# --- SYSTÈME ----------------------------------------------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+
+# --- SAUVEGARDES ACCIDENTELLES ---------------------------------------------
+# Un `.bak` daté est une note à soi-même, pas un livrable. Il finit toujours
+# par contenir la version qui avait les vrais mots de passe dedans.
+*.bak
+*.bak.*
+*.orig
+*.rej

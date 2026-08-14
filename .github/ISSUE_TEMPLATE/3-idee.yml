@@ -1,0 +1,64 @@
+name: Idée
+description: Une fonctionnalité, une amélioration, une friction qui revient.
+title: "[idée] "
+labels: ["idée"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Décrivez d'abord le manque, la solution ensuite.** Un manque bien décrit
+        survit à trois solutions différentes ; une solution sans son manque ne se
+        discute pas, elle s'accepte ou se refuse.
+
+        Avant d'écrire : [`docs/ROADMAP.md`](../../docs/ROADMAP.md) liste ce qui est
+        déjà identifié, et sa **section 6** dit ce qui ne sera pas fait — multi-utilisateur,
+        interface web publique, application mobile, Docker, mode gratuit. Ce sont des
+        décisions de portée, pas des oublis.
+
+  - type: textarea
+    id: manque
+    attributes:
+      label: Le manque
+      description: Qu'est-ce qui ne va pas aujourd'hui, et pour qui ?
+      placeholder: >-
+        Rien n'empêche un atome d'être rangé sur une racine. La règle est documentée
+        partout, mais aucune contrainte ne l'applique — et le savoir perdu ne fait
+        aucun bruit : on s'en aperçoit six mois plus tard, ou jamais.
+    validations:
+      required: true
+
+  - type: textarea
+    id: mesure
+    attributes:
+      label: Ce qui vous le fait dire
+      description: >-
+        Un chiffre de votre installation, une requête, un extrait de cockpit. Une
+        idée appuyée sur une mesure se tranche ; une idée appuyée sur une intuition
+        se discute indéfiniment.
+      placeholder: |
+        SELECT count(*) FROM arac.memory_atoms
+         WHERE status='active' AND scope NOT LIKE '%/%';
+        → 41 atomes invisibles au rappel sur mon installation (6 % du corpus)
+
+  - type: textarea
+    id: piste
+    attributes:
+      label: Une piste, si vous en avez une
+      description: Facultatif. Le manque compte davantage.
+
+  - type: textarea
+    id: cout
+    attributes:
+      label: Ce que ça coûterait
+      description: >-
+        Migration nécessaire ? Appels payants supplémentaires ? Rupture pour les
+        installations existantes ? Une idée qui dépense doit annoncer sa dépense —
+        c'est la règle du projet, elle vaut aussi pour les propositions.
+
+  - type: checkboxes
+    id: portee
+    attributes:
+      label: Portée
+      options:
+        - label: "J'ai vérifié la section 6 de ROADMAP.md : ce n'est pas dans la liste de ce qui ne sera pas fait."
+          required: true

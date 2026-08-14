@@ -1,0 +1,12 @@
+[Unit]
+Description=ARAC — déclenche la copie hors site
+
+[Timer]
+# Toutes les 30 minutes : la destination est souvent un portable qui dort. On
+# ne sait pas quand il sera là, donc on essaie souvent, et on ne se plaint
+# jamais d'un échec. C'est l'ANCIENNETÉ de la dernière copie réussie qui alerte.
+OnBootSec=15min
+OnUnitActiveSec=30min
+
+[Install]
+WantedBy=timers.target

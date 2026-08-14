@@ -1,0 +1,144 @@
+# ============================================================================
+# ingest-tls.conf — EXEMPLE, à n'installer que si le tunnel est impossible
+# ============================================================================
+#
+# Lisez deploy/nginx/README.md AVANT. Ce fichier est un dernier recours pour
+# une machine source qui ne peut pas tenir un tunnel SSH. Dans tous les
+# autres cas, il est une régression de sécurité : ne le posez pas « pour
+# voir ».
+#
+# Il n'est pas testé par ce dépôt : personne ici ne dispose du domaine, du
+# certificat ni du serveur nécessaires pour le vérifier. Traitez-le comme un
+# point de départ à relire, pas comme un fichier prêt à l'emploi.
+#
+# Remplacez :
+#   @@DOMAINE@@       le nom de domaine dédié à l'ingestion
+#   @@BASE@@          le nom de VOTRE base (celui de /etc/arac/<base>/)
+#   @@PORT_API@@      le port local de l'API de VOTRE cerveau
+#   @@PORT_COCKPIT@@  le port local de son cockpit
+#
+# LES DEUX PORTS N'ONT PAS DE VALEUR PAR DÉFAUT, ET C'EST DÉLIBÉRÉ.
+#
+# Ce gabarit annonçait « 8000 par défaut ». 8000 et 8100 ne sont pas les ports
+# « de l'API » : ce sont ceux qu'a obtenus le PREMIER cerveau installé sur une
+# machine. Le bootstrap attribue au suivant le premier port libre et le retient
+# dans son coffre. Recopier 8000 ici, sur un poste à deux cerveaux, revient à
+# faire pointer la façade publique de l'un vers l'API de l'AUTRE : les
+# conversations du premier entrent dans la mémoire du second, et rien
+# n'échoue — le proxy répond 202, l'ingestion « marche ».
+#
+# Les trois valeurs se lisent, elles ne se devinent pas :
+#
+#     sudo grep -E '^ARAC_(API|COCKPIT)_PORT=' /etc/arac/<votre_base>/arac.env
+#
+#
+# ----------------------------------------------------------------------------
+# CE QUE CE FICHIER OUVRE, ET RIEN D'AUTRE
+# ----------------------------------------------------------------------------
+#   POST /v1/ingest/messages          l'entrée des conversations
+#   POST /v1/ingest/capture-manifest  le compte rendu de capture (facultatif)
+#
+# Tout le reste — le cockpit, la lecture de la mémoire, l'administration —
+# reste invisible depuis l'Internet. C'est la règle : on n'ouvre que
+# l'ÉCRITURE d'un flux authentifié, jamais la LECTURE d'une vie.
+# ============================================================================
+
+# Un seau de jetons par adresse : une conversation, ce sont quelques requêtes
+# par minute, pas cent par seconde. Cette limite ne gênera jamais un usage
+# normal et coupe court à l'essentiel du bruit.
+# LE NOM DE LA ZONE PORTE LE NOM DU CERVEAU, ET CE N'EST PAS DU RANGEMENT.
+#
+# Une `limit_req_zone` est globale à l'INSTANCE nginx, pas au fichier qui la
+# déclare. Deux cerveaux qui posent chacun leur copie de ce gabarit donnent :
+#
+#     nginx: [emerg] zone "arac_ingest" is already declared
+#
+# — et nginx REFUSE DE CHARGER SA CONFIGURATION ENTIÈRE. Ce n'est donc pas
+# l'ingestion du second qui tombe : c'est celle du premier, et tout autre site
+# servi par le même nginx avec elle.
+limit_req_zone $binary_remote_addr zone=arac_ingest_@@BASE@@:10m rate=30r/m;
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name @@DOMAINE@@;
+
+    ssl_certificate     /etc/letsencrypt/live/@@DOMAINE@@/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/@@DOMAINE@@/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+
+    # Ne dites pas au monde quelle version vous faites tourner.
+    server_tokens off;
+
+    # Une conversation d'un an peut peser lourd, même gzippée. Trop bas :
+    # des lots refusés en 413 et une conversation bloquée pour toujours.
+    # Trop haut : une porte pour saturer le disque. 12 Mo laisse passer le
+    # plafond de lot du serveur (10 Mo) avec de la marge.
+    client_max_body_size 12m;
+
+    # Tout est refusé par défaut. On rouvre chemin par chemin, jamais
+    # l'inverse — un `location /` en tête et c'est toute la mémoire qui
+    # devient publique.
+    location / {
+        return 404;
+    }
+
+    location = /v1/ingest/messages {
+        limit_req zone=arac_ingest_@@BASE@@ burst=10 nodelay;
+        proxy_pass http://127.0.0.1:@@PORT_API@@;
+
+        # X-Forwarded-For n'est pas décoratif : c'est à sa présence que l'API
+        # reconnaît une requête venue de l'extérieur et EXIGE le jeton
+        # porteur. Sans cet en-tête, elle croirait parler à la boucle locale
+        # — c'est-à-dire à quelqu'un déjà passé par SSH — et laisserait
+        # entrer sans authentification. Ne le retirez jamais.
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host $host;
+
+        # Le corps arrive gzippé : ne pas le tamponner en mémoire, et laisser
+        # le temps à une grosse conversation d'être écrite en base.
+        proxy_request_buffering off;
+        proxy_read_timeout 120s;
+    }
+
+    location = /v1/ingest/capture-manifest {
+        limit_req zone=arac_ingest_@@BASE@@ burst=5 nodelay;
+        proxy_pass http://127.0.0.1:@@PORT_API@@;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host $host;
+    }
+
+    access_log /var/log/nginx/arac-ingest.access.log;
+    error_log  /var/log/nginx/arac-ingest.error.log;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name @@DOMAINE@@;
+    # Le renouvellement du certificat, et rien d'autre.
+    location /.well-known/acme-challenge/ { root /var/www/html; }
+    location / { return 301 https://$host$request_uri; }
+}
+
+# ----------------------------------------------------------------------------
+# APRÈS INSTALLATION — les trois vérifications qui comptent
+# ----------------------------------------------------------------------------
+#   nginx -t && systemctl reload nginx
+#
+#   curl -s -o /dev/null -w '%{http_code}\n' https://@@DOMAINE@@/
+#       → 404. Si vous obtenez autre chose, quelque chose est ouvert qui ne
+#         devrait pas l'être.
+#
+#   curl -s -o /dev/null -w '%{http_code}\n' -X POST https://@@DOMAINE@@/v1/ingest/messages
+#       → 401. Sans jeton, rien n'entre. Si vous obtenez 400 ou 422, c'est
+#         que la requête a été ACCEPTÉE puis jugée mal formée : l'API ne
+#         voit pas votre X-Forwarded-For, et n'exige donc pas le jeton.
+#         Corrigez cela avant toute autre chose.
+#
+#   curl -s https://@@DOMAINE@@:@@PORT_COCKPIT@@/ --max-time 3
+#       → doit échouer. Le cockpit n'est pas exposé, et ne le sera jamais.

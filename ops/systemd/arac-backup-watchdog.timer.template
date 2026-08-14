@@ -1,0 +1,12 @@
+[Unit]
+Description=ARAC — déclenche le chien de garde de la sauvegarde
+
+[Timer]
+# Toutes les 30 minutes. Ce n'est pas pour détecter vite — les seuils sont en
+# heures — c'est pour que l'absence de signal de vie hebdomadaire se remarque
+# rapidement quand le canal d'alerte tombe.
+OnBootSec=10min
+OnUnitActiveSec=30min
+
+[Install]
+WantedBy=timers.target

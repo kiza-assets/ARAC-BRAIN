@@ -1,0 +1,80 @@
+# ============================================================================
+# ARAC — dépendances Python du moteur, de l'API et du cockpit.
+#
+# Trois choix de fond, énoncés ici parce que c'est le premier fichier que vous
+# ouvrez après le clone, et parce qu'ils expliquent des absences autant que des
+# présences :
+#
+#   - Le pilote PostgreSQL est psycopg3 (`psycopg[binary,pool]`), pas
+#     psycopg2 : le pool de connexions est dans le paquet, et l'asynchrone
+#     n'exige pas de couche supplémentaire.
+#   - Les embeddings passent par le paquet `openai`. C'est la seule dépense
+#     récurrente obligatoire du cerveau ; elle est déclarée en première page du
+#     README, pas ici.
+#   - Ni Docker, ni orchestrateur : systemd et Python. Une machine que vous
+#     savez déjà administrer, et des services que vous pouvez lire.
+#
+# Versions : contraintes minimales (>=) lisibles ici. Versions exactes
+# installées figées dans requirements.lock.txt (`pip freeze` après
+# l'installation). Les deux fichiers sont versionnés, le lock garantit la
+# reproductibilité.
+# ============================================================================
+
+# --- Migrations Alembic ---
+alembic>=1.13
+# Dépendance d'Alembic. L'ORM n'est pas utilisé : les requêtes du cerveau sont
+# du SQL lisible, relisible et mesurable.
+SQLAlchemy>=2.0
+
+# --- Driver Postgres async (psycopg3) ---
+psycopg[binary,pool]>=3.2
+pgvector>=0.3         # adapters psycopg3 pour vector / halfvec / sparsevec
+
+# --- API REST ---
+fastapi>=0.115
+uvicorn[standard]>=0.32
+pydantic>=2.10
+pydantic-settings>=2.7
+# LA DÉPENDANCE QU'ON NE VOIT QUE SUR UNE MACHINE NEUVE.
+#
+# `POST /cc/login` est la SEULE route non-GET du cockpit — donc sa seule porte
+# d'entrée — et elle lit un formulaire. Starlette délègue l'analyse d'un corps
+# `multipart/form-data` à ce paquet ; il ne s'installe PAS avec fastapi.
+#
+# Il manquait ici. Sur la machine où ce code a été écrit, il était présent
+# (posé un jour par autre chose), donc invisible. Sur une installation neuve,
+# le cockpit démarrait, `/cc/healthz` rendait 200, `provisioned` était vrai
+# partout — et toute connexion rendait 500 en texte brut, sans une ligne dans
+# le journal applicatif. Tout disait que l'installation était saine, et
+# personne ne pouvait entrer.
+#
+# Trouvé par `tests/acceptance/acceptance.sh` (étape 7), qui installe sur une
+# base vierge. Gardé par `tests/acceptance/test_dependance_du_formulaire.py`,
+# qui exige l'analyseur tant qu'une route lit un formulaire — et cessera de
+# l'exiger tout seul le jour où plus aucune ne le fera.
+#
+# Le nom du module importé (`multipart`) diffère du nom de la distribution
+# (`python-multipart`) : c'est une des raisons pour lesquelles l'absence se
+# cache si bien.
+python-multipart>=0.0.9
+
+# --- Service embeddings OpenAI ---
+openai>=1.50
+tenacity>=9.0
+
+# --- Logging structuré JSON ---
+python-json-logger>=3.2
+
+# --- Tokenizer : compte les jetons AVANT de payer un appel ------------------
+tiktoken>=0.12
+
+# --- Tests ---
+pytest>=8.3
+pytest-asyncio>=0.25
+httpx>=0.28           # FastAPI TestClient
+
+# --- Analyse numérique (représentations foldées) ---
+numpy>=2.0            # arithmétique vectorielle du fold — cf app/repr/recipe.py
+
+# --- Validation de schémas JSON (contrats agents) ---
+jsonschema>=4.23

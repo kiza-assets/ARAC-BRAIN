@@ -1,0 +1,106 @@
+# =============================================================================
+# ARAC — un cerveau, pas un logiciel de notes
+#
+# Ce fichier ne décrit PAS une bibliothèque à publier. ARAC s'installe en
+# clonant le dépôt sur votre serveur : il a besoin de son arborescence
+# (`config/`, `db/`, `var/`, `logs/`) autant que de son code. Un `pip install`
+# ne livrerait que la moitié de la chose.
+#
+# Il sert donc à deux choses, et à rien d'autre :
+#   - déclarer les dépendances au même endroit que `requirements.txt` ;
+#   - configurer les outils (pytest, ruff) sans multiplier les fichiers.
+# =============================================================================
+
+[project]
+name = "arac-brain"
+version = "1.0.0"
+description = "Un cerveau personnel : vos conversations deviennent une mémoire qui se rappelle."
+requires-python = ">=3.12"
+license = { text = "MIT" }
+# Titulaire du projet — doit s'accorder avec LICENSE. Ce nom désigne le
+# propriétaire du framework, jamais un utilisateur ni une installation.
+authors = [{ name = "KIZA" }]
+
+# Ces versions sont des PLANCHERS lisibles. Les versions exactes réellement
+# installées sont figées dans `requirements.lock.txt` — c'est ce fichier-là
+# qui rend une installation reproductible, pas celui-ci.
+dependencies = [
+    # --- Base de données ---
+    "psycopg[binary,pool]>=3.2",
+    "pgvector>=0.3",          # les adaptateurs vector / halfvec pour psycopg3
+    "alembic>=1.13",
+    "SQLAlchemy>=2.0",        # dépendance d'Alembic. Aucun ORM n'est utilisé.
+
+    # --- API ---
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+
+    # --- Fournisseurs payants (cf .env.example pour le coût réel) ---
+    "openai>=1.50",           # embeddings, 3072 dimensions
+    "tenacity>=9.0",
+
+    # --- Outils ---
+    "python-json-logger>=3.2",
+    "tiktoken>=0.12",         # compter les jetons AVANT de les payer
+    "numpy>=2.0",             # arithmétique des représentations foldées
+    "jsonschema>=4.23",       # contrats d'échange avec les agents
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.25",
+    "httpx>=0.28",
+    "ruff>=0.8",
+]
+
+# =============================================================================
+# PYTEST
+#
+# La suite est HERMÉTIQUE : ni base, ni réseau, ni clef d'API. Un test rouge
+# doit vouloir dire « le code est cassé », jamais « PostgreSQL n'est pas
+# lancé ». Ce qui exige une base se déclare ignoré, pas en échec.
+#
+# Cette phrase n'a longtemps été qu'une INTENTION, écrite ici et dans quatre
+# autres documents, et vérifiée nulle part. `make test` émettait de vrais GET
+# vers http://127.0.0.1:8000 — l'API de PRODUCTION sur la machine de qui lance
+# la suite — et exécutait `systemctl`, `journalctl`, `ss` sur l'hôte réel.
+#
+# Elle est désormais TENUE par trois gardes posés avant le premier test
+# (`tests/garde_hermetique.py`, exercés par `tests/test_hermeticite_de_la_
+# suite.py`) : aucune socket TCP ne sort, aucune commande n'interroge la
+# machine, aucune base ne s'ouvre sans porter la marque de base de test.
+#
+# La preuve se rejoue en une ligne, sans PostgreSQL, sans réseau, sans clef :
+#     unshare -n -- bash -c 'ip link set lo up; make test'
+# =============================================================================
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+addopts = '-m "not live_api" --strict-markers'
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = [
+    "live_api: appelle VRAIMENT l'API OpenAI. Ignoré par défaut ; `pytest -m live_api` pour l'activer. Coûte quelques centimes.",
+    "real_reimport_plans: opère sur des plans de réimport réels plutôt que sur les jeux d'essai.",
+]
+
+# =============================================================================
+# RUFF
+# =============================================================================
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+exclude = [
+    ".venv",
+    "db/alembic/versions",      # migrations : figées une fois écrites
+    "app/schemas/scope_generated.py",  # engendré — le reformater serait vain
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = [
+    "E501",   # la longueur de ligne est traitée par le formateur
+    "B008",   # `Depends(...)` en valeur par défaut : c'est l'idiome FastAPI
+]

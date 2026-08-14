@@ -1,0 +1,91 @@
+# ============================================================================
+# authorized_keys — le bridage de la clé du pont
+# ============================================================================
+#
+# Destination : ~/.ssh/authorized_keys du compte dédié au tunnel, sur le
+# SERVEUR. Permissions : le dossier en 700, le fichier en 600, tous deux
+# possédés par ce compte. SSH refuse silencieusement une clé dont le fichier
+# est trop ouvert — et c'est une heure perdue si on ne le sait pas.
+#
+#     mkdir -p ~/.ssh && chmod 700 ~/.ssh
+#     chmod 600 ~/.ssh/authorized_keys
+#
+# ----------------------------------------------------------------------------
+# UNE LIGNE, TROIS DÉCISIONS
+# ----------------------------------------------------------------------------
+#
+# Ce qui précède la clé n'est pas décoratif : ce sont les seules choses que
+# cette clé pourra faire. Tout le reste est refusé par le serveur lui-même,
+# avant même que le client ne demande.
+#
+#   restrict
+#       Tout est interdit : pas de shell, pas d'agent, pas de X11, pas de
+#       terminal, pas de redirection. C'est le point de départ le plus sûr —
+#       on rouvre ensuite ce dont on a besoin, jamais l'inverse. (Sur un
+#       OpenSSH antérieur à 7.2, `restrict` n'existe pas : remplacez-le par
+#       no-agent-forwarding,no-x11-forwarding,no-pty,no-user-rc.)
+#
+#   port-forwarding
+#       On rouvre la redirection de ports — et rien d'autre.
+#
+#   permitopen="127.0.0.1:8000",permitopen="127.0.0.1:8100"
+#       On rouvre la redirection VERS CES DEUX PORTS UNIQUEMENT, en boucle
+#       locale du serveur : l'API du cerveau et le cockpit. Sans cette
+#       clause, une clé autorisée à rediriger peut atteindre n'importe quel
+#       port de n'importe quelle machine visible depuis le serveur — votre
+#       PostgreSQL, votre réseau interne, tout. Avec elle, elle atteint deux
+#       ports, et se casse le nez partout ailleurs.
+#
+# Adaptez les numéros si vous avez changé ARAC_API_PORT ou ARAC_COCKPIT_PORT.
+#
+# ----------------------------------------------------------------------------
+# LE MODÈLE — remplacez la fin par VOTRE clé publique
+# ----------------------------------------------------------------------------
+# La clé publique est celle affichée par `mac/arac-pont.sh cle-ssh`, ou le
+# contenu de ~/.ssh/id_ed25519_arac_<votre-cerveau>.pub sur votre machine —
+# le suffixe n'est pas décoratif : une clé sans lui est commune à toute la
+# session macOS, et ouvrirait les tunnels de TOUS les cerveaux de ce poste.
+# Elle tient sur UNE
+# ligne : un retour à la ligne au milieu, et rien ne fonctionne.
+#
+# @@PORT_API@@ et @@PORT_COCKPIT@@ SONT CEUX DE **CE** CERVEAU.
+#
+# Cette ligne portait 8000 et 8100 en dur. Ce ne sont pas des constantes du
+# produit : ce sont les deux numéros que VOTRE installation s'est vu attribuer
+# à l'étape 2, après constat de disponibilité, et qu'elle a écrits dans son
+# fichier d'environnement. Sur une machine qui porte deux cerveaux, le second
+# n'a PAS 8000 — et recopier ces deux nombres par habitude ouvre à la clé de
+# votre poste un tunnel vers l'API du VOISIN. Le pont enverrait alors vos
+# conversations privées dans sa mémoire, avec un jeton valide et sans une
+# seule erreur.
+#
+# Les valeurs exactes, sur le serveur :
+#     sudo grep -E '^ARAC_(API|COCKPIT)_PORT=' /etc/arac/<votre-base>/arac.env
+
+restrict,port-forwarding,permitopen="127.0.0.1:@@PORT_API@@",permitopen="127.0.0.1:@@PORT_COCKPIT@@" ssh-ed25519 AAAA...VOTRE_CLE_PUBLIQUE... arac-pont-<nom-de-votre-poste>
+
+# ----------------------------------------------------------------------------
+# VÉRIFIER QUE LE BRIDAGE MORD VRAIMENT
+# ----------------------------------------------------------------------------
+# Depuis votre machine, dans cet ordre. Les deux premiers DOIVENT échouer :
+#
+#   ssh <hôte> echo bonjour
+#       → « This service allows sftp connections only » ou une fermeture
+#         immédiate. Si vous obtenez une invite de commande, la ligne
+#         ci-dessus n'a pas été prise en compte : vérifiez les permissions
+#         du fichier et relisez-le, une seule ligne, sans coupure.
+#
+#   ssh -N -L 5432:127.0.0.1:5432 <hôte>
+#       → « administratively prohibited: open failed » à la première
+#         connexion sur le port 5432. C'est permitopen qui parle. Bien.
+#
+#   ssh -N -L 8100:127.0.0.1:8100 <hôte>
+#       → silence, et http://127.0.0.1:8100 répond. C'est ce qu'on veut.
+#
+# ----------------------------------------------------------------------------
+# ROTATION
+# ----------------------------------------------------------------------------
+# Une clé de pont se change comme une serrure : sans drame, et avant d'en
+# avoir besoin. Ajoutez la nouvelle ligne, vérifiez que le tunnel se rouvre
+# avec, puis supprimez l'ancienne. Jamais l'inverse — supprimer d'abord, c'est
+# se retrouver dehors avec un tunnel fermé.

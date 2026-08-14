@@ -1,0 +1,25 @@
+{
+  "_meta": {
+    "purpose": "Banc d'évaluation du rappel — À REMPLIR AVEC VOS QUESTIONS.",
+    "metric": "scope-recall@k : le scope attendu figure-t-il dans les k premiers résultats ?",
+    "pourquoi": "Sans banc, une amélioration du rappel est une impression. Écrivez vingt questions que vous poserez vraiment, notez le scope où vit la réponse, et mesurez AVANT de changer quoi que ce soit. Le premier passage devient votre baseline ; tout le reste se compare à elle.",
+    "champs": "id, query, expect_scope obligatoires. Optionnels : expect_empty (true = on attend AUCUN résultat, c'est le test anti-invention, le plus utile de tous), category, note.",
+    "version": 3
+  },
+  "queries": [
+    {
+      "id": "q01",
+      "query": "<une question que vous poserez vraiment>",
+      "expect_scope": "<la feuille où vit la réponse>",
+      "note": "Remplacez cette ligne. Visez vingt questions minimum : en dessous, une variation de 5 % n'est pas distinguable du bruit."
+    },
+    {
+      "id": "q02",
+      "query": "<une question dont la réponse n'existe pas dans votre mémoire>",
+      "expect_scope": "",
+      "expect_empty": true,
+      "category": "anti-hallucination",
+      "note": "Gardez toujours quelques questions comme celle-ci. Un rappel qui répond à tout est un rappel qui invente."
+    }
+  ]
+}

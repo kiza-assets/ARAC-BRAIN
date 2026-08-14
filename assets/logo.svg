@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="ARAC-BRAIN">
+  <title>ARAC-BRAIN</title>
+  <desc>Des souvenirs isolés que la proximité de sens relie ; l'un d'eux vient d'être retrouvé.</desc>
+
+  <!--
+    La marque dit ce que le produit fait, et rien d'autre.
+
+    Chaque point est un souvenir. Les traits ne sont pas décoratifs : ce sont les
+    liens que le cerveau calcule entre souvenirs proches par le sens. Les grappes
+    ont des densités différentes, parce qu'une taxonomie réelle n'est jamais
+    régulière — certains domaines se remplissent, d'autres restent clairsemés.
+
+    Le point plein et cerclé est celui qu'une question vient de faire remonter.
+  -->
+
+  <g fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity="0.45">
+    <!-- grappe dense, en haut à gauche -->
+    <path d="M17 19 L26 14 M17 19 L21 27 M26 14 L21 27 M21 27 L13 28 M13 28 L17 19"/>
+    <!-- grappe de droite -->
+    <path d="M47 22 L52 32 M47 22 L44 34 M52 32 L44 34"/>
+    <!-- grappe du bas -->
+    <path d="M24 44 L33 50 M24 44 L17 50 M33 50 L17 50"/>
+    <!-- les deux ponts : ce qui relie des mondes séparés -->
+    <path d="M21 27 L35 31 M35 31 L44 34 M35 31 L24 44"/>
+  </g>
+
+  <g fill="currentColor">
+    <circle cx="17" cy="19" r="2.6"/>
+    <circle cx="26" cy="14" r="2"/>
+    <circle cx="13" cy="28" r="2"/>
+    <circle cx="47" cy="22" r="2.3"/>
+    <circle cx="52" cy="32" r="1.8"/>
+    <circle cx="44" cy="34" r="2.3"/>
+    <circle cx="24" cy="44" r="2.6"/>
+    <circle cx="33" cy="50" r="2"/>
+    <circle cx="17" cy="50" r="1.8"/>
+    <circle cx="35" cy="31" r="2.3"/>
+  </g>
+
+  <!-- le souvenir retrouvé -->
+  <circle cx="21" cy="27" r="3.4" fill="currentColor"/>
+  <circle cx="21" cy="27" r="6.6" fill="none" stroke="currentColor" stroke-width="1.1" opacity="0.55"/>
+</svg>

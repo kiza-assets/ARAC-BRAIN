@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arac.local/schemas/atom_council/peer_score.schema.json",
+  "title": "Atom Council — peer_score (V2.1)",
+  "description": "Notation croisee en aveugle (Round 3) : un agent votant, fonction blind_peer_scorer, note une review anonymisee (review_A..review_E). Contenu redacted uniquement.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "scorer_id",
+    "anonymous_review_id",
+    "scores",
+    "strongest_point",
+    "weakest_point",
+    "suspected_hallucination",
+    "would_follow_recommendation",
+    "comments_redacted"
+  ],
+  "properties": {
+    "scorer_id": {
+      "type": "string",
+      "enum": [
+        "pragmatic_operator",
+        "devil_advocate",
+        "rigorous_verifier",
+        "first_principles_analyst",
+        "generalist_strategist"
+      ]
+    },
+    "anonymous_review_id": {
+      "type": "string",
+      "enum": [
+        "review_A",
+        "review_B",
+        "review_C",
+        "review_D",
+        "review_E"
+      ]
+    },
+    "scores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exactitude",
+        "utilite",
+        "clarte",
+        "prudence",
+        "actionabilite",
+        "detection_risques",
+        "respect_no_raw_no_secret",
+        "valeur_memoire"
+      ],
+      "properties": {
+        "exactitude": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "utilite": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "clarte": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "prudence": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "actionabilite": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "detection_risques": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "respect_no_raw_no_secret": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "valeur_memoire": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "strongest_point": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "weakest_point": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "suspected_hallucination": {
+      "type": "boolean"
+    },
+    "would_follow_recommendation": {
+      "type": "boolean"
+    },
+    "comments_redacted": {
+      "type": "string",
+      "maxLength": 1000
+    }
+  }
+}

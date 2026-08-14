@@ -1,0 +1,132 @@
+# ============================================================================
+# LE CRITÈRE D'ACCEPTATION, JOUÉ SUR UNE MACHINE QUI NE CONNAÎT PERSONNE
+#
+# `tests.yml` répond à « le code est-il cassé ? ». Ce fichier-ci répond à la
+# seule question qui décide si le framework est terminé :
+#
+#     un inconnu peut-il, SANS INTERVENTION, cloner ce dépôt, suivre la
+#     documentation, installer ARAC, créer son cerveau, synchroniser ses
+#     premières conversations, LE VOIR APPRENDRE, et utiliser son cockpit ?
+#
+# POURQUOI CE JOB EST DÉCLENCHÉ À LA MAIN, ET PAS À CHAQUE POUSSÉE
+# ----------------------------------------------------------------
+# Il installe pour de vrai : cluster PostgreSQL, cinq rôles, deux comptes
+# système, six unités systemd, un environnement Python complet. Une quinzaine
+# de minutes, et un exécuteur entier. Le lancer à chaque commit ferait de lui
+# un décor qu'on apprend à ignorer — exactement ce qui est arrivé aux jobs de
+# style qu'on a dû rendre non bloquants.
+#
+# Il tourne donc : à la demande, et une fois par semaine. C'est le rythme
+# auquel une régression d'INSTALLATION se découvre — celles-là ne viennent
+# presque jamais d'un commit, mais d'une dépendance qui a bougé sous le pied.
+#
+# CE QU'IL PROUVE MIEUX QUE N'IMPORTE QUELLE MACHINE DE DÉVELOPPEMENT
+# -------------------------------------------------------------------
+# Un exécuteur GitHub est nu. Il n'a jamais hébergé de cerveau, ne porte
+# aucun rôle `arac_*`, aucun compte `arac`, aucun reste d'essai. C'est la
+# seule façon d'attraper la classe de fautes qui se cache derrière un « ça
+# marche chez moi » : le rôle `arac_backup` manquant, découvert seulement sur
+# une grappe vierge, en est l'exemple exact.
+#
+# ⚠ NON OBSERVÉ : ce fichier n'a jamais été exécuté par un exécuteur GitHub.
+# Le harnais qu'il lance, lui, a tourné en réel sur un serveur Ubuntu. Si le
+# premier passage échoue, c'est ici qu'il faut regarder — pas dans le harnais.
+#
+# CE QU'IL NE FAIT PAS : dépenser. Aucune clé n'est fournie, donc l'étape 6
+# rend « PARTIEL » en nommant ce qu'elle n'a pas pu prouver. Une CI qui aurait
+# besoin d'une clé payante serait une CI que personne ne peut rejouer en local.
+# ============================================================================
+
+name: acceptation
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Une fois par semaine. Une régression d'installation ne vient presque
+    # jamais d'un commit : elle vient d'une dépendance qui a bougé.
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: acceptation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  acceptation:
+    name: un inconnu installe son cerveau
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Le harnais commence par `git clone` du dépôt local. Sans
+          # historique, il retombe sur une copie et le DIT (étape 1 en
+          # PARTIEL). On lui donne donc de quoi cloner pour de bon.
+          fetch-depth: 0
+
+      # Le bootstrap n'installe AUCUN paquet : il les nomme et vous rend la
+      # main. C'est un choix, documenté à l'étape 1 du bootstrap — « un paquet
+      # posé sur un serveur sans qu'on le sache est une dette qu'on découvre
+      # six mois plus tard ». La CI joue donc le rôle de l'utilisateur qui
+      # recopie les commandes que le bootstrap lui a données.
+      - name: prérequis système (ce que le bootstrap nomme sans l'installer)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            postgresql-16 postgresql-16-pgvector postgresql-client-16 \
+            python3-venv rsync curl
+          sudo systemctl enable --now postgresql
+
+      # LA PREUVE QUE LE HARNAIS SE PROTÈGE LUI-MÊME, avant de lui donner root.
+      # Ces tests exercent ses gardes d'isolement sur les valeurs exactes qui
+      # ont cassé une installation de production : 5432, 8000, 8100,
+      # `arac-api`, `/var/backups/arac`. Ils sont hermétiques et durent une
+      # seconde. Les jouer AVANT est la seule chose qui ait du sens : un
+      # harnais dont les gardes sont cassées ne doit pas être lancé du tout.
+      - name: les gardes du harnais tiennent-elles ?
+        run: |
+          python3 -m pip install --quiet pytest
+          python3 -m pytest tests/acceptance/test_garde_isolement.py -q
+
+      - name: le critère d'acceptation, en entier
+        run: sudo tests/acceptance/acceptance.sh --journal "$PWD/acceptation.log"
+
+      # Le journal est le livrable : il porte les sept verdicts, leurs
+      # preuves, ce qui n'a pas été testé et pourquoi. On le garde même quand
+      # le job échoue — c'est justement là qu'il sert.
+      - name: le rapport
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-acceptation
+          path: acceptation.log
+          if-no-files-found: warn
+
+      # UN TEST QUI LAISSE LA MACHINE PLUS SALE QU'IL NE L'A TROUVÉE EST LE
+      # DÉFAUT QU'ON COMBAT. Le harnais démonte sous un piège EXIT et vérifie
+      # son propre démontage — mais un contrôle qui se croit sur parole n'est
+      # pas un contrôle. On le vérifie ici, DEHORS, avec les yeux du système.
+      - name: la machine est-elle revenue à son état initial ?
+        if: always()
+        run: |
+          echec=0
+          if pg_lsclusters -h | grep -q acceptation; then
+            echo "::error::un cluster d'acceptation survit :"; pg_lsclusters; echec=1
+          fi
+          if systemctl list-unit-files --no-legend | grep -q 'arac-acceptation'; then
+            echo "::error::des unités d'acceptation survivent :"
+            systemctl list-unit-files --no-legend | grep 'arac-acceptation'; echec=1
+          fi
+          if getent passwd | grep -q acceptation; then
+            echo "::error::des comptes d'acceptation survivent :"
+            getent passwd | grep acceptation; echec=1
+          fi
+          for d in /var/lib/arac-acceptation /var/log/arac-acceptation \
+                   /var/backups/arac-acceptation; do
+            [ -e "$d" ] && { echo "::error::$d survit"; ls -la "$d"; echec=1; }
+          done
+          [ "$echec" = 0 ] && echo "la machine est propre."
+          exit "$echec"

@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arac.local/schemas/atom_council/president_decision.schema.json",
+  "title": "Atom Council — president_decision (V2.1)",
+  "description": "Decision finale du president_arbiter (Round 5). Le president ne vote pas : il tranche. memory_write_allowed=true exige human_gate_required=true ET un GO humain — implication verifiee par le runner, non exprimable ici.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "final_decision",
+    "final_confidence",
+    "selected_next_action",
+    "rationale_redacted",
+    "decisive_arguments",
+    "unresolved_conflicts",
+    "vetoes",
+    "human_gate_required",
+    "memory_write_allowed",
+    "no_raw_confirmed",
+    "no_secret_confirmed"
+  ],
+  "properties": {
+    "final_decision": {
+      "type": "string",
+      "enum": [
+        "APPROVE",
+        "REJECT",
+        "REVISE",
+        "NEEDS_MORE_CONTEXT",
+        "NEEDS_HUMAN_DECISION",
+        "NEEDS_EXTERNAL_MODEL",
+        "DEFER"
+      ]
+    },
+    "final_confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "selected_next_action": {
+      "type": "string",
+      "enum": [
+        "create_atom_pack_for_human",
+        "discard_with_receipt",
+        "request_revision",
+        "request_more_context",
+        "escalate_to_human",
+        "escalate_to_external_model",
+        "defer_to_backlog"
+      ]
+    },
+    "rationale_redacted": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "decisive_arguments": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "string",
+        "maxLength": 500
+      }
+    },
+    "unresolved_conflicts": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "string",
+        "maxLength": 500
+      }
+    },
+    "vetoes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "agent_role",
+          "veto_type",
+          "reason_redacted"
+        ],
+        "properties": {
+          "agent_role": {
+            "type": "string",
+            "enum": [
+              "pragmatic_operator",
+              "devil_advocate",
+              "rigorous_verifier",
+              "first_principles_analyst",
+              "generalist_strategist"
+            ]
+          },
+          "veto_type": {
+            "type": "string",
+            "enum": [
+              "verifier_veto",
+              "critical_break",
+              "assumption_collapse"
+            ]
+          },
+          "reason_redacted": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
+      }
+    },
+    "human_gate_required": {
+      "type": "boolean"
+    },
+    "memory_write_allowed": {
+      "type": "boolean"
+    },
+    "no_raw_confirmed": {
+      "type": "boolean"
+    },
+    "no_secret_confirmed": {
+      "type": "boolean"
+    }
+  }
+}

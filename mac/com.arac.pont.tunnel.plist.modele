@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  ============================================================================
+  com.arac.@@CERVEAU@@.pont.tunnel — le tunnel permanent vers votre cerveau
+  ============================================================================
+
+  GABARIT. Les marqueurs encadrés de doubles arobases sont remplacés par `arac-pont.sh automatiser`,
+  qui écrit le résultat dans ~/Library/LaunchAgents/. N'installez pas ce
+  fichier tel quel : il ne contient aucun chemin réel, volontairement.
+
+  CE QUE FAIT CET AGENT
+  ·····················
+  Il maintient ouvert, en permanence, un tunnel SSH sortant vers votre
+  serveur, et rapatrie deux ports sur la boucle locale de cette machine :
+
+      127.0.0.1:@@PORT_API@@       l'API du cerveau — par où montent vos conversations
+      127.0.0.1:@@PORT_COCKPIT@@   le cockpit       — par où vous le regardez
+
+  POURQUOI UN TUNNEL, ET PAS UNE ADRESSE PUBLIQUE
+  ···············································
+  Le cockpit est en lecture seule, et c'est précisément ce qui trompe :
+  « lecture seule » ne veut pas dire « sans conséquence ». Il donne à voir
+  tout ce que votre cerveau sait de vous — vos projets, vos proches, vos
+  décisions, vos erreurs. Une vie, indexée et interrogeable.
+
+  Exposer cela derrière un mot de passe sur l'Internet, c'est parier que ce
+  mot de passe, ce TLS, cette version d'un serveur web et toutes celles à
+  venir tiendront aussi longtemps que vos souvenirs comptent. Le tunnel ne
+  fait pas ce pari : côté serveur, l'API et le cockpit n'écoutent QUE sur
+  127.0.0.1. Il n'existe aucun port à attaquer, aucune page de connexion à
+  deviner. La seule porte est SSH, avec une clé, et cette clé est bridée
+  pour n'ouvrir rien d'autre que ces deux ports (voir deploy/ssh/README.md).
+
+  POURQUOI autossh ET PAS ssh SEUL
+  ·································
+  KeepAlive relance un processus MORT. Le problème d'un tunnel, ce n'est pas
+  la mort : c'est le coma. Après une mise en veille du Mac ou un changement
+  de réseau, la session TCP survit côté client alors que plus rien ne passe.
+  Le processus vit, launchd ne relance rien, et le pont se tait en silence.
+  autossh sonde en permanence et reconstruit la session quand elle ne répond
+  plus. `-M 0` désactive son propre port de surveillance : les sondes de SSH
+  (ServerAliveInterval) suffisent et ne demandent aucun port supplémentaire.
+
+  VÉRIFIER APRÈS INSTALLATION
+  ···························
+      plutil -lint ~/Library/LaunchAgents/com.arac.@@CERVEAU@@.pont.tunnel.plist
+      launchctl list | grep com.arac.@@CERVEAU@@.pont
+      lsof -nP -iTCP:@@PORT_API@@ -sTCP:LISTEN     # doit montrer ssh/autossh
+      tail -f ~/Library/Logs/arac-pont-@@CERVEAU@@-tunnel.log
+  ============================================================================
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>@@ETIQUETTE@@</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>@@AUTOSSH@@</string>
+        <!-- pas de port de surveillance dédié : les sondes SSH suffisent -->
+        <string>-M</string>
+        <string>0</string>
+        <!-- aucune commande distante : ce tunnel ne sert qu'à transporter -->
+        <string>-N</string>
+        <string>-o</string>
+        <string>ServerAliveInterval=30</string>
+        <string>-o</string>
+        <string>ServerAliveCountMax=3</string>
+        <!--
+          ExitOnForwardFailure : si un port ne peut pas être ouvert, on
+          MEURT au lieu de vivre à moitié. Un tunnel debout dont l'API
+          n'est pas redirigée est pire qu'un tunnel absent : le diagnostic
+          dit « ça marche » et rien n'arrive.
+        -->
+        <string>-o</string>
+        <string>ExitOnForwardFailure=yes</string>
+        <!--
+          BatchMode : jamais de question interactive. Sous launchd, personne
+          n'est là pour répondre ; une invite bloquerait le tunnel pour
+          toujours.
+        -->
+        <string>-o</string>
+        <string>BatchMode=yes</string>
+
+        <string>-L</string>
+        <string>127.0.0.1:@@PORT_API@@:127.0.0.1:@@PORT_API@@</string>
+        <string>-L</string>
+        <string>127.0.0.1:@@PORT_COCKPIT@@:127.0.0.1:@@PORT_COCKPIT@@</string>
+
+        <!-- l'hôte tel qu'il est défini dans ~/.ssh/config, jamais une IP nue -->
+        <string>@@SERVEUR@@</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <!--
+          AUTOSSH_GATETIME=0 : ne pas considérer qu'une connexion tombée
+          très vite est une erreur fatale. Au démarrage du Mac, le réseau
+          n'est pas encore là ; sans cette valeur, autossh abandonne au
+          premier essai et le tunnel ne s'ouvre jamais après un redémarrage.
+        -->
+        <key>AUTOSSH_GATETIME</key>
+        <string>0</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <!-- au démarrage, puis maintenu vivant -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>@@FOYER@@/Library/Logs/arac-pont-@@CERVEAU@@-tunnel.log</string>
+    <key>StandardErrorPath</key>
+    <string>@@FOYER@@/Library/Logs/arac-pont-@@CERVEAU@@-tunnel.log</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

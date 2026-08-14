@@ -1,0 +1,44 @@
+# ============================================================================
+# arac-pont-sans-mac.timer — le rythme de la synchronisation côté serveur
+# ============================================================================
+#
+# GABARIT. Déposez dans /etc/systemd/system/ à côté du .service, puis :
+#     sudo systemctl daemon-reload
+#     sudo systemctl enable --now arac-@@CERVEAU@@-pont.timer
+#     systemctl list-timers arac-@@CERVEAU@@-pont.timer   # vérifier
+#
+# @@CERVEAU@@ : le nom assaini de votre cerveau. Voir le .service pour ce que
+# coûtait un nom d'unité fixe — le second `enable` écrasait le premier.
+#
+# ----------------------------------------------------------------------------
+# POURQUOI TOUTES LES HEURES
+# ----------------------------------------------------------------------------
+# Le serveur ne digère pas en continu : il travaille par cycles (trois par
+# jour par défaut). Synchroniser plus souvent que la digestion ne fait rien
+# arriver plus vite dans la mémoire — cela ne fait qu'augmenter le nombre
+# d'occasions de casser quelque chose.
+#
+# L'heure est un compromis : assez fin pour qu'une conversation du matin soit
+# là pour le cycle de l'après-midi, assez large pour que rien ne s'emballe.
+# ============================================================================
+
+[Unit]
+Description=ARAC — rythme de la synchronisation des conversations
+
+[Timer]
+OnCalendar=hourly
+
+# Jusqu'à cinq minutes de décalage aléatoire. Sur une machine qui héberge
+# plusieurs choses, cela évite que tout parte à la même seconde ronde — et,
+# accessoirement, que votre fournisseur d'embeddings reçoive un pic net.
+RandomizedDelaySec=300
+
+# Si la machine était éteinte à l'heure prévue, rattraper au démarrage plutôt
+# que d'attendre l'heure suivante. Un portable qui dort la nuit ne doit pas
+# perdre la synchronisation de la nuit.
+Persistent=true
+
+Unit=arac-@@CERVEAU@@-pont.service
+
+[Install]
+WantedBy=timers.target

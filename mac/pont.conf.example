@@ -1,0 +1,173 @@
+# ============================================================================
+# LE PONT — configuration côté machine source
+# ============================================================================
+#
+# Copiez ce fichier en  ~/.arac/<cerveau>/pont.conf  et remplissez-le.
+#
+# UN DOSSIER PAR CERVEAU. Un même poste pilote souvent deux cerveaux ; leurs
+# jetons, leurs journaux et surtout leur CURSEUR de synchronisation ne se
+# partagent pas. Voir la section 5.
+# `mac/arac-pont.sh installer` le fait pour vous, en vous posant les questions.
+#
+# Ce fichier est lu par DEUX programmes :
+#   · arac-sync.py  (Python)  — la synchronisation elle-même
+#   · arac-pont.sh  (bash)    — l'installation, le tunnel, le diagnostic
+# D'où sa forme volontairement austère : CLE=valeur, une par ligne, aucune
+# astuce de shell. `$HOME` est développé par les deux.
+#
+# Il ne contient AUCUN secret : le jeton vit dans un fichier séparé, en 0600.
+# Ne le mettez quand même pas dans un dépôt git — il décrit votre machine.
+#
+# ============================================================================
+
+
+# ----------------------------------------------------------------------------
+# 1. QUI EST CETTE MACHINE — la valeur la plus importante du fichier
+# ----------------------------------------------------------------------------
+#
+# Le cerveau refuse toute conversation venant d'un poste qu'il ne connaît pas.
+# Cette chaîne doit être EXACTEMENT celle de `source.node_id` dans le
+# config/brain.toml de votre serveur. Un caractère de différence = HTTP 403,
+# et rien n'entre jamais.
+#
+# Sur le cerveau de référence, 36 % des cycles de digestion se sont terminés
+# sans produire un seul atome. La cause n'était pas le volume : c'étaient des
+# identifiants incohérents entre le poste, l'API et la base. Recopiez cette
+# valeur, ne la retapez pas.
+#
+# Vérification côté serveur :
+#     grep node_id ~/arac/config/brain.toml
+
+ARAC_NODE_ID=
+
+
+# ----------------------------------------------------------------------------
+# 2. OÙ ENVOYER
+# ----------------------------------------------------------------------------
+#
+# 127.0.0.1, et ce n'est pas une erreur : l'API de votre cerveau n'écoute que
+# sur la boucle locale DU SERVEUR. Ce port local est l'entrée du tunnel SSH —
+# c'est lui qui transporte, chiffré, jusqu'au serveur.
+#
+# IL N'Y A PAS DE NUMÉRO PAR DÉFAUT, ET C'EST VOULU. « 8000 » était une valeur
+# plausible, ce qui est exactement ce qui la rendait dangereuse : sur une
+# machine qui porte deux cerveaux, elle désigne le PREMIER — et le pont du
+# second y déposait les conversations privées de son propriétaire, avec un
+# jeton valide et un HTTP 200. Une fuite qui se présente comme un succès.
+#
+# Le port de VOTRE cerveau, sur son serveur :
+#     sudo grep '^ARAC_API_PORT=' /etc/arac/<votre-base>/arac.env
+#
+# Renseignez ARAC_PORT_API (section 7) et cette URL s'en déduit ; ou écrivez-la
+# ici en entier. L'un des deux est obligatoire.
+#
+# Si vous voyez ici l'adresse publique de votre serveur, c'est que quelqu'un
+# a exposé l'API à l'Internet. Relisez docs/PONT-MAC.md § « Pourquoi un
+# tunnel » avant de continuer.
+
+ARAC_INGEST_URL=
+
+
+# ----------------------------------------------------------------------------
+# 3. LE JETON — dans un fichier à part, jamais ici
+# ----------------------------------------------------------------------------
+#
+# Il se lit sur le serveur, en root :
+#     sudo grep '^ARAC_API_BEARER_TOKEN=' /etc/arac/<votre-base>/arac.env
+# et se dépose ici :
+#     umask 077 && pbpaste > ~/.arac/<cerveau>/jeton_ingest     # macOS
+#     chmod 600 ~/.arac/<cerveau>/jeton_ingest
+#
+# arac-sync.py refuse de démarrer si ce fichier est lisible par d'autres
+# comptes de la machine.
+
+ARAC_TOKEN_FILE=$HOME/.arac/<cerveau>/jeton_ingest
+
+
+# ----------------------------------------------------------------------------
+# 4. LES SOURCES DE CONVERSATIONS
+# ----------------------------------------------------------------------------
+#
+# a) Claude Code (le CLI) écrit ses sessions ici, en direct, en .jsonl.
+#    C'est la source automatique : rien à faire, elle se remplit toute seule.
+#    Vous pouvez restreindre à un sous-dossier si vous ne voulez envoyer que
+#    certains projets — le pont ne lit jamais au-dessus de ce chemin.
+
+ARAC_CLAUDE_CODE_DIR=$HOME/.claude/projects
+
+# b) L'export officiel de claude.ai (l'application de bureau et le web).
+#    Il ne se remplit PAS tout seul : c'est un instantané que vous demandez.
+#      claude.ai → Paramètres → Confidentialité → Exporter les données
+#      → vous recevez un lien par courriel → dézippez → déposez
+#        conversations.json à l'emplacement ci-dessous.
+#    Refaites-le quand vous voulez rattraper les nouvelles conversations.
+#    Voir docs/PONT-MAC.md pour pourquoi il n'existe pas de voie automatique.
+
+ARAC_DESKTOP_EXPORT=$HOME/.arac/<cerveau>/export-desktop/conversations.json
+
+
+# ----------------------------------------------------------------------------
+# 5. MÉMOIRE ET TRACES LOCALES
+# ----------------------------------------------------------------------------
+#
+# L'état retient, par conversation, combien de messages le serveur a
+# ACQUITTÉS. Le supprimer ne perd rien : le pont renverra tout, le serveur
+# dédupliquera. C'est le geste de dernier recours quand vous doutez.
+
+ARAC_STATE_FILE=$HOME/.arac/<cerveau>/etat-pont.json
+
+# Le journal : une ligne JSON par événement. C'est là qu'on regarde quand
+# quelque chose ne va pas.  tail -f, ou :  jq -c 'select(.evenement=="fin")'
+
+ARAC_LOG_FILE=$HOME/.arac/<cerveau>/journal/arac-pont.log
+
+
+# ----------------------------------------------------------------------------
+# 6. RYTHME
+# ----------------------------------------------------------------------------
+#
+# Nombre maximal de conversations envoyées par passage. 0 = sans plafond.
+# Utile à la toute première remontée d'historique : mettez 20, regardez le
+# cockpit se remplir, augmentez ensuite. Le reste part au passage suivant.
+
+ARAC_MAX_CONVERSATIONS=0
+
+
+# ----------------------------------------------------------------------------
+# 7. LE TUNNEL (lu par arac-pont.sh uniquement)
+# ----------------------------------------------------------------------------
+#
+# Le nom d'hôte SSH, tel que défini dans votre ~/.ssh/config. PAS une adresse
+# IP avec un mot de passe : un alias, une clé, et rien à taper.
+#
+#   Host mon-cerveau
+#       HostName  <adresse-de-votre-serveur>
+#       User      pont-<votre-base>
+#       IdentityFile ~/.ssh/id_ed25519_arac_<votre-cerveau>
+#       IdentitiesOnly yes
+#       ServerAliveInterval 30
+#
+# LA CLÉ PORTE LE NOM DU CERVEAU, ET LE COMPTE AUSSI. Un `id_ed25519_arac`
+# sans suffixe est un nom unique pour toute la session macOS : deux ponts s'y
+# partageraient une même clé privée, et la compromission de l'un ouvrirait le
+# tunnel de l'autre. La promesse « une clé, et cette clé n'ouvre que deux
+# ports » deviendrait « une clé, quatre ports, deux cerveaux ».
+#
+# `arac-pont.sh cle-ssh` fabrique la clé sous le bon nom et vous donne la
+# ligne exacte à poser sur le serveur.
+
+ARAC_SERVEUR_SSH=mon-cerveau
+
+# Les deux ports que le tunnel rapatrie depuis le serveur :
+#   · l'API      — par où vos conversations montent
+#   · le cockpit — par où vous regardez votre cerveau penser
+# Ce sont les ports LOCAUX comme DISTANTS. Ils n'ont pas de défaut : recopiez
+# CEUX DE VOTRE CERVEAU, que son bootstrap a attribués après constat de
+# disponibilité et écrits dans son fichier d'environnement :
+#
+#     sudo grep -E '^ARAC_(API|COCKPIT)_PORT=' /etc/arac/<votre-base>/arac.env
+#
+# Sur une machine à deux cerveaux, ce ne sont PAS les mêmes des deux côtés.
+
+ARAC_PORT_API=
+ARAC_PORT_COCKPIT=

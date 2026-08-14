@@ -1,0 +1,97 @@
+# ============================================================================
+# VOS PROJETS — le savoir vu par intention
+# ============================================================================
+#
+# Copiez ce fichier en `config/projects.toml` et remplacez tout.
+# Sans ce fichier, le cockpit fonctionne : la famille « projets » affiche
+# simplement « aucun projet déclaré ». Rien n'est cassé, il manque une vue.
+#
+# ---------------------------------------------------------------------------
+# UN PROJET N'EST PAS UN DOSSIER
+# ---------------------------------------------------------------------------
+#
+# Votre taxonomie (`config/scopes.toml`) dit OÙ un savoir est rangé.
+# Ce fichier-ci dit À QUOI il sert. Les deux se croisent sans se recouvrir :
+# le chantier qui vous occupe cette année touche votre logement, vos finances
+# et vos fournisseurs — trois scopes, une seule intention.
+#
+# Un atome appartient donc à PLUSIEURS projets, et c'est voulu. Le cockpit ne
+# résout jamais l'appartenance : il ne vous demandera jamais de choisir.
+#
+# Conséquence à connaître : les décomptes par projet ne s'additionnent pas.
+# Le cockpit compte en `count(DISTINCT id)` partout, jamais en somme de
+# colonnes — une somme compterait deux fois le même atome.
+#
+# ---------------------------------------------------------------------------
+# LES TROIS FAÇONS DE DÉSIGNER DU SAVOIR
+# ---------------------------------------------------------------------------
+#
+#   scopes    = ["travail/finance"]     un scope exact, et lui seul.
+#
+#   prefixes  = ["travail"]             toute la branche : `travail`,
+#                                       `travail/finance`, `travail/strategie`…
+#                                       La RACINE NUE est incluse — voir
+#                                       l'encadré ci-dessous.
+#
+#   keywords  = ["piscine", "devis"]    RESTREINT les scopes ci-dessus : le
+#                                       projet devient « ces scopes ET ces
+#                                       mots ». Cherchés dans la clé de l'atome
+#                                       et dans ses étiquettes, sans casse.
+#                                       Sans mots-clés, tout le scope entre.
+#
+# Un projet doit citer au moins un scope ou un préfixe. Un projet qui n'en cite
+# aucun ne contiendra jamais rien, et le chargement le refuse.
+#
+# ---------------------------------------------------------------------------
+# POURQUOI LES PRÉFIXES INCLUENT LA RACINE NUE
+# ---------------------------------------------------------------------------
+#
+# Un atome posé directement sur une racine (`travail`, pas `travail/finance`)
+# est INVISIBLE au rappel : il est en base, il est actif, aucune question ne le
+# fera remonter. Sur le cerveau de référence, 157 atomes — 9 % du corpus —
+# étaient dans ce cas.
+#
+# Les projets les comptent quand même. Précisément parce qu'ils sont perdus :
+# une dette qu'on ne voit pas ne se résorbe jamais. Si vos décomptes de projet
+# dépassent la somme de vos feuilles, vous venez de mesurer votre dette.
+#
+# ---------------------------------------------------------------------------
+# BON DOSAGE
+# ---------------------------------------------------------------------------
+#
+# Trois à dix projets. En dessous, la vue n'apprend rien de plus que la
+# taxonomie. Au-dessus, plus personne ne la lit.
+#
+# Un bon projet est une intention que vous poursuivez encore. Un projet
+# terminé garde son intérêt (le cockpit le marque « en veille » après trente
+# jours sans nouvel atome) ; un projet que vous n'avez jamais poursuivi
+# n'apprend rien à personne.
+#
+# ============================================================================
+
+
+# --- Toute une branche de la taxonomie -------------------------------------
+[[project]]
+id = "travail"
+label = "Travail"
+prefixes = ["travail"]
+
+# --- Une intention qui traverse plusieurs scopes ---------------------------
+[[project]]
+id = "outils"
+label = "Outillage"
+prefixes = ["outillage"]
+
+# --- Un chantier précis : des scopes RESTREINTS par des mots-clés ----------
+# Sans les mots-clés, ce projet avalerait tout `perso/logement`.
+[[project]]
+id = "renovation"
+label = "Rénovation"
+scopes = ["perso/logement", "projets/en-cours"]
+keywords = ["renovation", "travaux", "devis", "artisan"]
+
+# --- Un thème transverse : des feuilles choisies une par une ---------------
+[[project]]
+id = "argent"
+label = "Argent"
+scopes = ["travail/finance", "perso/administratif"]

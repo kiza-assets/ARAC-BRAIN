@@ -1,0 +1,19 @@
+# GABARIT — cf ops/systemd/README.md
+# Le contrôle d'installation, hebdomadaire : la dérive se voit avant la panne.
+[Unit]
+Description=ARAC — contrôle de l'installation
+Documentation=file://__ARAC_HOME__/docs/EXPLOITATION.md
+
+[Service]
+Type=oneshot
+User=__ARAC_USER__
+Group=__ARAC_GROUP__
+WorkingDirectory=__ARAC_HOME__
+EnvironmentFile=__ARAC_ENV_FILE__
+Environment=ARAC_HOME=__ARAC_HOME__
+ExecStart=/usr/bin/env bash __ARAC_HOME__/ops/install_check.sh
+SuccessExitStatus=1 2
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes

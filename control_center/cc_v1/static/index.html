@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex, nofollow">
+<title>ARAC · Control Center</title>
+<!--
+  La coquille. Elle ne contient AUCUNE donnée : pas un chiffre, pas une date,
+  pas un libellé de mesure. Tout ce qui s'affiche ici est demandé à /cc/v1/*
+  par app.js. Ouvrir cette page sans le BFF ne montre donc rien de faux :
+  ça montre des états d'indisponibilité motivés.
+
+  Zéro dépendance externe : aucune police distante, aucun script tiers.
+  Le cockpit fonctionne hors ligne.
+-->
+<link rel="stylesheet" href="/cc/v1/static/ds.css">
+</head>
+<body>
+
+<a class="skip-link" href="#view">Aller au contenu</a>
+
+<div id="cockpit">
+
+  <!-- =====================================================================
+       1 · BANDEAU VITAL — jamais masqué. Cinq valeurs, jamais plus.
+       ===================================================================== -->
+  <header id="vitals">
+    <div class="brand">
+      <span class="brand-name">ARAC</span>
+      <span class="brand-sub">control center</span>
+    </div>
+    <div id="vital-strip" class="vital-strip" role="group" aria-label="Constantes vitales">
+      <div class="vital" data-state="unavailable">
+        <div class="vital-label">Lecture</div>
+        <div class="vital-value">…</div>
+        <div class="vital-sub">interrogation de /cc/v1/metrics</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- =====================================================================
+       2 · RAIL DE NAVIGATION — touches 1..9, 0, -, =
+       ===================================================================== -->
+  <nav id="rail" aria-label="Domaines"></nav>
+
+  <!-- =====================================================================
+       3 · LA VUE
+       ===================================================================== -->
+  <main id="view" tabindex="-1">
+    <p class="spin">Ouverture du cockpit…</p>
+  </main>
+
+  <!-- =====================================================================
+       4 · FLUX D'ACTIVITÉ — repliable, JAMAIS fermable
+       ===================================================================== -->
+  <section id="flux" data-open="1" aria-label="Flux d'activité">
+    <div class="flux-bar">
+      <!-- aria-controls DOIT désigner la région réellement repliée.
+           CE QUI ÉTAIT FAUX (corrigé le 2026-08-05) : il désignait `flux-body`,
+           le journal d'événements — or la règle qui replie est
+           `#flux[data-open="0"] .flux-body { display: none }` (ds.css), et le
+           porteur de cette classe est `flux-body-wrap`, qui contient AUSSI
+           `flux-rest`. Un lecteur d'écran suivant aria-controls atterrissait
+           donc dans le journal et manquait le reste replié.
+           CE QUE CETTE VERSION GARANTIT : aria-expanded et aria-controls
+           décrivent le même élément que celui que le CSS masque. -->
+      <button id="flux-toggle" class="flux-toggle" type="button" aria-expanded="true" aria-controls="flux-body-wrap">
+        <span class="flux-caret" aria-hidden="true"></span>
+        <span>flux</span>
+      </button>
+      <span id="flux-last" class="flux-last">en attente du premier fait observé</span>
+      <span class="flux-right">
+        <span id="link-live" class="link-live" data-mode="init">
+          <span class="link-dot" aria-hidden="true"></span>
+          <span id="link-word">connexion</span>
+        </span>
+      </span>
+    </div>
+    <div class="flux-body" id="flux-body-wrap">
+      <div id="flux-rest" class="flux-rest"></div>
+      <div id="flux-body" role="log" aria-live="polite" aria-label="Événements du cerveau"></div>
+    </div>
+  </section>
+
+</div>
+
+<!-- =======================================================================
+     5 · TIROIR DE PREUVE — invocable depuis N'IMPORTE QUEL chiffre
+     ======================================================================= -->
+<div id="scrim" data-open="0"></div>
+
+<aside id="drawer" data-open="0" aria-hidden="true" role="dialog" aria-modal="false" aria-labelledby="drawer-title">
+  <div class="drawer-head">
+    <div class="drawer-eyebrow">
+      <span id="drawer-eyebrow" class="eyebrow">preuve</span>
+      <button class="drawer-close" type="button" aria-label="Fermer le tiroir de preuve">Échap ✕</button>
+    </div>
+    <h2 id="drawer-title" class="drawer-title">—</h2>
+    <p class="tiny faint">Définition, formule, SQL rejouable, lignes sources. Un chiffre qu'on ne peut pas contredire ne mérite pas d'être cru.</p>
+  </div>
+  <div id="drawer-body" class="drawer-body"></div>
+</aside>
+
+<!-- =======================================================================
+     6 · AIDE CLAVIER
+     ======================================================================= -->
+<div id="help" data-open="0" role="dialog" aria-modal="true" aria-label="Raccourcis clavier">
+  <div id="help-card" class="help-card"></div>
+</div>
+
+<script src="/cc/v1/static/app.js"></script>
+</body>
+</html>

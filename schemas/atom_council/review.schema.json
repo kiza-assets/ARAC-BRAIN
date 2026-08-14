@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arac.local/schemas/atom_council/review.schema.json",
+  "title": "Atom Council — review (V2.1)",
+  "description": "Review independante emise par un agent votant du Conseil des Atomes au Round 1. Contenu redacted uniquement : jamais de transcript brut, jamais de secret.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "review_id",
+    "agent_role",
+    "recommendation",
+    "confidence",
+    "usefulness_score",
+    "factuality_score",
+    "risk_score",
+    "clarity_score",
+    "actionability_score",
+    "memory_value_score",
+    "key_arguments",
+    "objections",
+    "missing_context",
+    "risk_flags",
+    "human_required",
+    "no_raw_confirmed",
+    "no_secret_confirmed"
+  ],
+  "properties": {
+    "review_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]+$",
+      "maxLength": 128
+    },
+    "agent_role": {
+      "type": "string",
+      "enum": [
+        "pragmatic_operator",
+        "devil_advocate",
+        "rigorous_verifier",
+        "first_principles_analyst",
+        "generalist_strategist"
+      ]
+    },
+    "recommendation": {
+      "type": "string",
+      "enum": [
+        "APPROVE",
+        "REJECT",
+        "REVISE",
+        "NEEDS_MORE_CONTEXT",
+        "NEEDS_HUMAN_DECISION",
+        "NEEDS_EXTERNAL_MODEL",
+        "DEFER"
+      ]
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "usefulness_score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "factuality_score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "risk_score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "clarity_score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "actionability_score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "memory_value_score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "key_arguments": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "string",
+        "maxLength": 500
+      }
+    },
+    "objections": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "string",
+        "maxLength": 500
+      }
+    },
+    "missing_context": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "string",
+        "maxLength": 500
+      }
+    },
+    "risk_flags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 80
+      }
+    },
+    "human_required": {
+      "type": "boolean"
+    },
+    "no_raw_confirmed": {
+      "type": "boolean"
+    },
+    "no_secret_confirmed": {
+      "type": "boolean"
+    }
+  }
+}

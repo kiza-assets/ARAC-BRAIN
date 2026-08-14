@@ -1,0 +1,1782 @@
+/* ==========================================================================
+   ARAC — Control Center v1 · système de design « E, Quiet Instrument »
+   --------------------------------------------------------------------------
+   Sombre par nature. Quasi achromatique. L'instrument de mesure, jamais le
+   tableau de bord.
+
+   LE PARTAGE SÉMANTIQUE DES DEUX TEINTES EST L'IDENTITÉ DU PRODUIT :
+
+     --acc  LILAS  = LA PRÉSENCE HUMAINE.
+            Sélection, focus clavier, question posée au cerveau (recherche,
+            ouverture d'une preuve). RIEN D'AUTRE. Jamais un état de donnée.
+
+     --amber AMBRE = LA MACHINE QUI S'ENREGISTRE.
+            À la fois l'état « attention » ET la couleur de la trace (le flux
+            d'activité, l'horodatage d'un fait). C'est ce partage qui fait que
+            l'état dégradé — l'état NORMAL de ce système — ne se lit jamais
+            comme une alarme.
+
+     --crit ROUGE  = réservé à ce qui le mérite. Doit rester rare.
+     --na   NEUTRE = l'organe non branché. Ni vert, ni rouge. Digne.
+
+   Zéro dépendance : aucune police distante, aucune image distante, aucun SVG
+   (le seul espace de noms SVG est une URL, et ce cockpit doit rester lisible
+   hors ligne comme sous un scanner). Toutes les formes sont dessinées en CSS.
+   ========================================================================== */
+
+:root {
+  /* ---- surfaces ---- */
+  --bg:    #0d0d10;
+  --s1:    #15151a;
+  --s2:    #1b1b21;
+  --hair:  rgba(255,255,255,.07);
+  --hair2: rgba(255,255,255,.13);
+
+  /* ---- texte ---- */
+  --t1: #eaeaee;
+  --t2: #9a9aa3;
+  --t3: #61616b;
+
+  /* ---- sémantique ---- */
+  --acc:   #a99ade;
+  --amber: #c6a469;
+  --ok:    #7fa898;
+  --crit:  #bb6a52;
+  --na:    #6b6b75;
+
+  /* ---- une seule échelle d'espacement (base 8) ---- */
+  --sp-h: 4px;
+  --sp-1: 8px;
+  --sp-2: 16px;
+  --sp-3: 24px;
+  --sp-4: 40px;
+  --sp-5: 64px;
+
+  /* ---- deux rayons, pas trois ---- */
+  --r1: 3px;
+  --r2: 10px;
+
+  /* ---- deux familles SYSTÈME, aucune webfont ---- */
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+
+  /* ---- géométrie du cadre permanent ---- */
+  --rail-w: 216px;
+  --flux-h: 34px;
+
+  color-scheme: dark;
+}
+
+/* ==========================================================================
+   Réinitialisation minimale
+   ========================================================================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--t1);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, p, ul, ol, figure { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+table { border-collapse: collapse; width: 100%; }
+a { color: var(--acc); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Le focus clavier est TOUJOURS visible, et il est lilas : c'est la présence
+   humaine dans l'instrument. Aucune règle ne l'annule nulle part. */
+:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+  border-radius: var(--r1);
+}
+
+::selection { background: rgba(169,154,222,.30); color: #fff; }
+
+/* Barres de défilement discrètes — l'instrument ne s'annonce pas. */
+* { scrollbar-width: thin; scrollbar-color: var(--hair2) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: var(--hair2); border-radius: var(--r2); border: 3px solid var(--bg); }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* ==========================================================================
+   Typographie — le monospace est SÉMANTIQUE, pas décoratif :
+   il dit « ceci est une donnée exacte, pas une phrase ».
+   Chiffres tabulaires partout où une valeur peut changer.
+   ========================================================================== */
+
+.mono, .num, code, pre, kbd, .sql, .ts, .id, input, td.num, th.num {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
+
+.num, .value, .metric-value, .vital-value, .health-value, td, .count {
+  font-variant-numeric: tabular-nums;
+}
+
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--t3);
+  font-weight: 500;
+}
+
+.lede    { color: var(--t2); max-width: 78ch; }
+.muted   { color: var(--t2); }
+.faint   { color: var(--t3); }
+.tiny    { font-size: 11px; }
+.small   { font-size: 12px; }
+.strong  { color: var(--t1); font-weight: 600; }
+.unit    { color: var(--t3); font-size: .72em; margin-left: .35em; letter-spacing: .02em; }
+.ts      { color: var(--t3); font-size: 11px; }
+
+/* ==========================================================================
+   Cadre permanent
+   ========================================================================== */
+
+#cockpit {
+  display: grid;
+  grid-template-columns: var(--rail-w) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* ---- 1. Bandeau vital — jamais masqué -------------------------------- */
+
+#vitals {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: var(--rail-w) minmax(0, 1fr);
+  border-bottom: 1px solid var(--hair);
+  background: var(--bg);
+}
+
+.brand {
+  padding: var(--sp-2) var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+.brand-name { font-size: 13px; letter-spacing: .28em; text-transform: uppercase; color: var(--t1); }
+.brand-sub  { font-size: 10px; letter-spacing: .10em; color: var(--t3); text-transform: uppercase; }
+
+.vital-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.vital {
+  padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  border-left: 1px solid var(--hair);
+  text-align: left;
+  width: 100%;
+}
+.vital:first-child { border-left: 0; }
+.vital-label { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--t3); }
+.vital-value {
+  font-family: var(--mono);
+  font-size: 21px;
+  line-height: 1.15;
+  color: var(--t1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vital-sub { font-size: 11px; color: var(--t2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vital[data-state="warn"]        .vital-value { color: var(--amber); }
+.vital[data-state="critical"]    .vital-value { color: var(--crit); }
+.vital[data-state="unavailable"] .vital-value { color: var(--na); }
+
+/* ---- L'état ne doit JAMAIS tenir à la seule couleur -------------------------
+   Le bandeau vital et le grand chiffre d'accueil sont les deux éléments les plus
+   vus du produit ; ils ne changeaient que de teinte. Imprimés en niveaux de gris
+   — ou lus par un œil qui distingue mal l'ambre du gris — ils ne disaient plus
+   rien. Chaque état porte donc une FORME : un soulignement dont le style suffit
+   à le reconnaître sans couleur, et un glyphe pour les états qui appellent. */
+
+.vital-value, .health-value { padding-bottom: 2px; border-bottom: 2px solid transparent; }
+
+.vital[data-state="ok"]          .vital-value,
+.health[data-state="ok"]         .health-value { border-bottom-color: transparent; }
+
+.vital[data-state="warn"]        .vital-value,
+.health[data-state="warn"]       .health-value {
+  border-bottom: 2px solid currentColor;          /* trait plein : quelque chose appelle */
+}
+.vital[data-state="critical"]    .vital-value,
+.health[data-state="critical"]   .health-value {
+  border-bottom: 3px double currentColor;         /* trait double : rupture */
+}
+.vital[data-state="unavailable"] .vital-value,
+.health[data-state="unavailable"].health-value,
+.health[data-state="unavailable"] .health-value {
+  border-bottom: 2px dashed currentColor;         /* pointillé : non mesurable */
+}
+
+/* Glyphe d'appel — lisible sans couleur, masqué aux lecteurs d'écran qui ont
+   déjà le libellé d'état dans le texte. */
+.vital[data-state="warn"]        .vital-value::after,
+.vital[data-state="critical"]    .vital-value::after,
+.vital[data-state="unavailable"] .vital-value::after {
+  font-size: .62em; margin-left: .32em; vertical-align: .35em; opacity: .85;
+}
+.vital[data-state="warn"]        .vital-value::after { content: "▲"; }
+.vital[data-state="critical"]    .vital-value::after { content: "■"; }
+.vital[data-state="unavailable"] .vital-value::after { content: "—"; }
+
+/* ---- 2. Rail de navigation ------------------------------------------- */
+
+#rail {
+  grid-row: 2;
+  border-right: 1px solid var(--hair);
+  padding: var(--sp-3) 0 var(--sp-3) 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.rail-group { display: flex; flex-direction: column; }
+.rail-title { padding: var(--sp-1) var(--sp-3) var(--sp-h); }
+
+.nav-item {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 6px var(--sp-3) 6px calc(var(--sp-3) - 3px);
+  color: var(--t2);
+  border-left: 3px solid transparent;
+  width: 100%;
+  text-align: left;
+}
+.nav-item:hover { color: var(--t1); background: var(--s1); }
+.nav-item[aria-current="page"] {
+  color: var(--t1);
+  border-left-color: var(--acc);   /* sélection = présence humaine */
+  background: var(--s1);
+}
+.nav-key {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--t3);
+  text-align: center;
+}
+.nav-item[aria-current="page"] .nav-key { color: var(--acc); }
+.nav-count { font-family: var(--mono); font-size: 10px; color: var(--t3); font-variant-numeric: tabular-nums; }
+.nav-item[data-empty="1"] .nav-count { color: var(--na); }
+
+/* ---- 3. Zone de vue --------------------------------------------------- */
+
+#view {
+  grid-row: 2;
+  overflow-y: auto;
+  padding: var(--sp-4) var(--sp-5) var(--sp-5);
+  min-width: 0;
+}
+
+.view-head { margin-bottom: var(--sp-4); }
+.view-title { font-size: 22px; font-weight: 500; letter-spacing: -.01em; }
+.view-sub   { color: var(--t2); margin-top: var(--sp-h); max-width: 82ch; }
+
+.section { margin-top: var(--sp-5); }
+.section:first-of-type { margin-top: 0; }
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding-bottom: var(--sp-1);
+  margin-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--hair);
+}
+.section-title { font-size: 13px; font-weight: 600; letter-spacing: .02em; }
+
+/* ---- 4. Flux d'activité — repliable, JAMAIS fermable ------------------ */
+
+#flux {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--hair);
+  background: var(--s1);
+  display: flex;
+  flex-direction: column;
+  max-height: 42vh;
+}
+
+.flux-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-3);
+  height: var(--flux-h);
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.flux-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  color: var(--t2);
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  flex: 0 0 auto;
+}
+.flux-toggle:hover { color: var(--t1); }
+.flux-caret {
+  width: 0; height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 5px solid var(--t3);
+  transition: transform .18s ease;
+}
+#flux[data-open="0"] .flux-caret { transform: rotate(180deg); }
+
+.flux-last { flex: 1 1 auto; min-width: 0; color: var(--t2); font-size: 12px;
+             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.flux-right { flex: 0 0 auto; display: flex; align-items: center; gap: var(--sp-2); }
+
+/* La pastille de transport : ambre = la machine s'enregistre. */
+.link-live {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--t3);
+}
+.link-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--na); flex: 0 0 auto; }
+.link-live[data-mode="sse"]      .link-dot { background: var(--amber); }
+.link-live[data-mode="poll"]     .link-dot { background: var(--amber); opacity: .55;
+                                             box-shadow: 0 0 0 1px var(--amber) inset; }
+.link-live[data-mode="down"]     .link-dot { background: var(--crit); }
+.link-live[data-mode="poll"]  { color: var(--amber); }
+.link-live[data-mode="down"]  { color: var(--crit); }
+
+.flux-body { overflow-y: auto; padding: 0 var(--sp-3) var(--sp-2); }
+#flux[data-open="0"] .flux-body { display: none; }
+
+.ev {
+  display: grid;
+  grid-template-columns: 84px 92px 1fr auto;
+  gap: var(--sp-2);
+  align-items: baseline;
+  padding: 3px 0;
+  border-top: 1px solid var(--hair);
+  font-size: 12px;
+}
+.ev-ts    { font-family: var(--mono); color: var(--amber); opacity: .85; font-size: 11px; }
+.ev-stage { font-family: var(--mono); color: var(--t3); font-size: 11px;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ev-msg   { color: var(--t2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ev[data-level="notable"]  .ev-msg { color: var(--t1); }
+.ev[data-level="anomalie"] .ev-msg { color: var(--amber); }
+.ev[data-unknown="1"]      .ev-msg { color: var(--na); font-style: italic; }
+.ev-sub { font-family: var(--mono); font-size: 11px; color: var(--t3); }
+
+.flux-rest {
+  padding: var(--sp-3) 0 var(--sp-2);
+  display: grid;
+  gap: var(--sp-h);
+}
+
+/* ==========================================================================
+   L'indice de santé — le SEUL élément qui respire
+   Période 5,6 s · amplitude 2–3 % d'opacité et d'échelle.
+   Imperceptible consciemment, déterminant émotionnellement.
+   ========================================================================== */
+
+.health {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: var(--sp-5);
+  align-items: center;
+  padding-bottom: var(--sp-4);
+}
+
+.health-figure { display: flex; flex-direction: column; gap: var(--sp-1); text-align: left; }
+
+.health-value {
+  font-family: var(--mono);
+  font-size: clamp(64px, 9vw, 116px);
+  line-height: .96;
+  letter-spacing: -.03em;
+  color: var(--t1);
+  animation: respire 5.6s ease-in-out infinite;
+  transform-origin: left center;
+  display: inline-block;
+}
+.health-value .unit { font-size: .26em; color: var(--t3); letter-spacing: 0; }
+.health[data-state="warn"]        .health-value { color: var(--amber); }
+.health[data-state="critical"]    .health-value { color: var(--crit); }
+.health[data-state="unavailable"] .health-value { color: var(--na); animation: none; }
+
+/* La respiration garde son OPACITÉ et perd son ÉCHELLE. Sur un chiffre de
+   116 px laissé huit heures sur un second écran, 0,8 % d'échelle fait environ
+   un pixel de déplacement périodique — exactement ce que la vision
+   périphérique détecte et ce qui fatigue. L'opacité, elle, ne bouge rien :
+   le signe de vie demeure, le mouvement disparaît. */
+@keyframes respire {
+  0%, 100% { opacity: .972; }
+  50%      { opacity: 1;    }
+}
+
+/* Sans mouvement : l'information reste ENTIÈRE, seule la respiration cesse. */
+@media (prefers-reduced-motion: reduce) {
+  .health-value { animation: none; }
+  * { transition-duration: .001ms !important; animation-duration: .001ms !important;
+      animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+}
+
+.health-caption { color: var(--t2); max-width: 62ch; display: grid; gap: var(--sp-1); }
+.health-name { color: var(--t1); font-size: 15px; }
+
+/* ==========================================================================
+   Cartes de constantes vitales
+   Séparées par la valeur et l'espace — pas par des traits.
+   ========================================================================== */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  gap: 1px;
+  background: var(--hair);
+  border-top: 1px solid var(--hair);
+  border-bottom: 1px solid var(--hair);
+}
+
+.card {
+  background: var(--bg);
+  padding: var(--sp-2) var(--sp-2) var(--sp-2) 0;
+  padding-left: var(--sp-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  min-width: 0;
+  width: 100%;
+  transition: background .12s ease;
+}
+.card:hover { background: var(--s1); }
+.card-label { font-size: 11px; color: var(--t2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-value {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 26px;
+  line-height: 1.2;
+  color: var(--t1);
+}
+.card-foot { display: flex; align-items: center; gap: var(--sp-1); min-width: 0; }
+.card-key { font-family: var(--mono); font-size: 10px; color: var(--t3);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.card[data-state="warn"]        .card-value { color: var(--amber); }
+.card[data-state="critical"]    .card-value { color: var(--crit); }
+.card[data-state="unavailable"] .card-value { color: var(--na); font-size: 20px; }
+
+/* ==========================================================================
+   États — jamais portés par la seule couleur : un GLYPHE les accompagne
+   ========================================================================== */
+
+.dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--na);
+  flex: 0 0 auto;
+}
+.dot[data-state="ok"]       { background: var(--ok); }
+.dot[data-state="warn"]     { background: var(--amber); }
+.dot[data-state="critical"] { background: var(--crit); }
+.dot[data-state="unavailable"] {
+  background: transparent;
+  border: 1px solid var(--na);
+  width: 7px; height: 7px;
+  transform: rotate(45deg);
+  border-radius: 1px;                 /* losange creux */
+}
+
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--t2);
+  border: 1px solid var(--hair2);
+  border-radius: var(--r2);
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+.chip[data-state="ok"]          { color: var(--ok); border-color: rgba(127,168,152,.35); }
+.chip[data-state="warn"]        { color: var(--amber); border-color: rgba(198,164,105,.38); }
+.chip[data-state="critical"]    { color: var(--crit); border-color: rgba(187,106,82,.42); }
+.chip[data-state="unavailable"] { color: var(--na); border-color: var(--hair); border-style: dashed; }
+.chip.chip-h { color: var(--acc); border-color: rgba(169,154,222,.40); }
+
+/* Le glyphe d'état, redondant avec la couleur (contrainte d'accessibilité) */
+.glyph { font-family: var(--mono); font-size: 11px; }
+.glyph[data-state="ok"]          { color: var(--ok); }
+.glyph[data-state="warn"]        { color: var(--amber); }
+.glyph[data-state="critical"]    { color: var(--crit); }
+.glyph[data-state="unavailable"] { color: var(--na); }
+
+/* ==========================================================================
+   L'ABSENCE — un organe non branché, et ça doit être BEAU
+   ========================================================================== */
+
+.na-block {
+  border: 1px dashed var(--hair2);
+  border-radius: var(--r2);
+  padding: var(--sp-3);
+  display: grid;
+  gap: var(--sp-1);
+  background:
+    repeating-linear-gradient(135deg,
+      rgba(255,255,255,.012) 0 6px,
+      transparent 6px 12px);
+  max-width: 84ch;
+}
+.na-title { display: flex; align-items: center; gap: var(--sp-1); color: var(--na); font-size: 13px; }
+.na-row { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: var(--sp-2); font-size: 12px; }
+.na-row dt { color: var(--t3); }
+.na-row dd { margin: 0; color: var(--t2); min-width: 0; }
+.na-row dd.mono { color: var(--t2); font-size: 11px; word-break: break-word; }
+
+.empty {
+  border: 1px dashed var(--hair);
+  border-radius: var(--r2);
+  padding: var(--sp-4);
+  color: var(--t2);
+  display: grid;
+  gap: var(--sp-1);
+  max-width: 84ch;
+}
+
+/* ==========================================================================
+   La chaîne des six maillons
+   Chaque état porté par une FORME, jamais par la seule couleur.
+   ========================================================================== */
+
+.chain {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--sp-2);
+  padding: var(--sp-2) 0 0;
+}
+
+.link { display: grid; gap: 6px; align-content: start; min-width: 0; text-align: left; width: 100%; }
+
+.link-track {
+  position: relative;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--hair);
+  overflow: hidden;
+}
+.link-fill {
+  position: absolute; inset: 0 auto 0 0;
+  width: 0;
+  background: var(--t3);
+  border-radius: 2px;
+}
+
+/* franchi : segment plein + pastille pleine */
+.link[data-link="done"] .link-fill { width: 100%; background: var(--ok); }
+.link[data-link="done"] .link-mark { background: var(--ok); border-color: var(--ok); border-radius: 50%; }
+
+/* en cours : segment partiel + losange plein */
+.link[data-link="partial"] .link-fill { background: var(--amber); }
+.link[data-link="partial"] .link-mark {
+  background: var(--amber); border-color: var(--amber);
+  transform: rotate(45deg); border-radius: 1px;
+}
+
+/* en attente : piste vide + anneau */
+.link[data-link="pending"] .link-fill { width: 0; }
+.link[data-link="pending"] .link-mark { background: transparent; border-color: var(--t3); border-radius: 50%; }
+
+/* échoué : hachures + pastille */
+.link[data-link="failed"] .link-track {
+  background: repeating-linear-gradient(45deg,
+    var(--crit) 0 3px, transparent 3px 6px);
+  opacity: .85;
+}
+.link[data-link="failed"] .link-fill { width: 0; }
+.link[data-link="failed"] .link-mark { background: var(--crit); border-color: var(--crit); border-radius: 50%; }
+
+/* indisponible : pointillé + losange creux, teinte neutre. Digne. */
+.link[data-link="unavailable"] .link-track {
+  background: repeating-linear-gradient(90deg,
+    var(--na) 0 2px, transparent 2px 6px);
+  opacity: .6;
+}
+.link[data-link="unavailable"] .link-fill { width: 0; }
+.link[data-link="unavailable"] .link-mark {
+  background: transparent; border-color: var(--na);
+  transform: rotate(45deg); border-radius: 1px;
+}
+.link[data-link="unavailable"] .link-name  { color: var(--na); }
+.link[data-link="unavailable"] .link-value { color: var(--na); }
+
+/* ── États servis par le BFF que l'interface ignorait ─────────────────────────
+   Ils étaient rabattus sur « en attente », ce qui affichait 104 conversations
+   analysées SANS AUCUN ATOME comme « pas encore traitées » — le signal produit
+   le plus important du cockpit, inversé. Chaque état porte une FORME distincte :
+   l'information survit à l'impression en niveaux de gris. */
+
+/* « sans matière » — la conversation a bien été lue, elle n'a rien donné.
+   Ce n'est PAS un échec : piste pleine en teinte neutre, marque carrée creuse. */
+.link[data-link="empty"] .link-track { background: var(--hair2); opacity: .75; }
+.link[data-link="empty"] .link-fill  { width: 100%; background: var(--na); opacity: .45; }
+.link[data-link="empty"] .link-mark  {
+  background: transparent; border-color: var(--t3);
+  border-radius: 1px;                  /* carré creux — ni cercle, ni losange */
+}
+.link[data-link="empty"] .link-name  { color: var(--t2); }
+.link[data-link="empty"] .link-value { color: var(--t2); }
+
+/* « écartée » — retirée du traitement par une décision, pas par une panne.
+   Piste barrée en diagonale, marque barrée. */
+.link[data-link="skipped"] .link-track {
+  background: repeating-linear-gradient(135deg,
+    var(--hair2) 0 3px, transparent 3px 7px);
+}
+.link[data-link="skipped"] .link-fill { width: 0; }
+.link[data-link="skipped"] .link-mark {
+  background: transparent; border-color: var(--t3); border-radius: 50%;
+  position: relative;
+}
+.link[data-link="skipped"] .link-mark::after {
+  content: ''; position: absolute; inset: 40% -2px auto -2px;
+  height: 1px; background: var(--t3);   /* la barre : lisible sans couleur */
+}
+.link[data-link="skipped"] .link-name  { color: var(--t3); }
+
+/* « état inconnu » — le moteur publie une valeur que l'interface ne connaît pas.
+   On ne l'assimile JAMAIS en silence : on la signale, pour qu'une divergence de
+   contrat se voie au lieu de mentir. */
+.link[data-link="unknown"] .link-track {
+  background: repeating-linear-gradient(90deg,
+    var(--amber) 0 1px, transparent 1px 4px);
+  opacity: .5;
+}
+.link[data-link="unknown"] .link-fill { width: 0; }
+.link[data-link="unknown"] .link-mark {
+  background: transparent; border-color: var(--amber);
+  border-radius: 50%; border-style: dotted;
+}
+.link[data-link="unknown"] .link-name,
+.link[data-link="unknown"] .link-note { color: var(--amber); }
+
+/* Mêmes formes en taille micro (chaîne dans une liste dense). */
+.cm[data-link="empty"]   { background: var(--na); opacity: .45; border-radius: 1px; }
+.cm[data-link="skipped"] { background: transparent; box-shadow: inset 0 0 0 1px var(--t3); }
+.cm[data-link="unknown"] { background: transparent; box-shadow: inset 0 0 0 1px var(--amber); }
+
+.link-head { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.link-mark {
+  width: 8px; height: 8px;
+  border: 1px solid var(--t3);
+  background: transparent;
+  flex: 0 0 auto;
+}
+.link-name { font-size: 11px; letter-spacing: .10em; text-transform: uppercase; color: var(--t2);
+             overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.link-value { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 18px; color: var(--t1); }
+.link-note { font-size: 11px; color: var(--t3); }
+.link-loss { font-family: var(--mono); font-size: 11px; color: var(--amber); }
+
+/* chaîne compacte (une conversation dans une liste) */
+.chain-mini { display: inline-flex; gap: 3px; align-items: center; }
+.chain-mini .cm {
+  width: 7px; height: 7px; border: 1px solid var(--t3); background: transparent; border-radius: 50%;
+}
+.chain-mini .cm[data-link="done"]    { background: var(--ok); border-color: var(--ok); }
+.chain-mini .cm[data-link="partial"] { background: var(--amber); border-color: var(--amber);
+                                       transform: rotate(45deg); border-radius: 1px; }
+.chain-mini .cm[data-link="pending"] { background: transparent; border-color: var(--t3); }
+.chain-mini .cm[data-link="failed"]  { background: var(--crit); border-color: var(--crit); }
+.chain-mini .cm[data-link="unavailable"] {
+  background: transparent; border-color: var(--na); border-style: dotted;
+  transform: rotate(45deg); border-radius: 1px;
+}
+
+/* ==========================================================================
+   Le blocage principal
+   ========================================================================== */
+
+.block-main {
+  border-left: 2px solid var(--amber);
+  padding: var(--sp-1) 0 var(--sp-1) var(--sp-3);
+  display: grid;
+  gap: var(--sp-1);
+  max-width: 92ch;
+}
+.block-title { font-size: 15px; color: var(--t1); }
+.block-facts { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+.block-fact { display: grid; gap: 1px; }
+.block-fact .k { font-size: 10px; letter-spacing: .13em; text-transform: uppercase; color: var(--t3); }
+.block-fact .v { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 17px; color: var(--t1); }
+
+/* ==========================================================================
+   Chiffres cliquables — la promesse centrale : tout chiffre ouvre sa preuve
+   Le geste appartient à l'humain : il est LILAS.
+   ========================================================================== */
+
+.q {
+  display: inline;
+  border-bottom: 1px dotted transparent;
+  color: inherit;
+  text-align: inherit;
+}
+.q:hover { border-bottom-color: var(--acc); color: var(--acc); }
+.q:hover .card-value, .q:hover .vital-value { color: inherit; }
+
+button.card:hover .card-label, button.vital:hover .vital-label { color: var(--acc); }
+button.card::after { content: ""; }
+
+.evidence-cue {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--t3);
+  letter-spacing: .06em;
+}
+.card:hover .evidence-cue, .link:hover .evidence-cue { color: var(--acc); }
+
+/* ==========================================================================
+   Tables de données
+   ========================================================================== */
+
+.table-wrap { overflow-x: auto; border-top: 1px solid var(--hair); }
+
+table.data { font-size: 12px; min-width: 100%; }
+table.data th {
+  text-align: left;
+  font-weight: 500;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--t3);
+  padding: var(--sp-1) var(--sp-2) var(--sp-1) 0;
+  border-bottom: 1px solid var(--hair);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 1;
+}
+table.data td {
+  padding: 5px var(--sp-2) 5px 0;
+  border-bottom: 1px solid var(--hair);
+  color: var(--t2);
+  vertical-align: top;
+}
+table.data tr:hover td { background: var(--s1); color: var(--t1); }
+table.data td.mono, table.data td.num { font-family: var(--mono); color: var(--t2); font-size: 11px; }
+table.data td.num { text-align: right; }
+table.data th.num { text-align: right; }
+table.data td.t1 { color: var(--t1); }
+table.data td.na { color: var(--na); font-style: italic; }
+table.data td.wrap { white-space: normal; max-width: 62ch; }
+table.data td.nowrap, table.data th.nowrap { white-space: nowrap; }
+.row-link { cursor: pointer; }
+
+/* barre proportionnelle : la largeur reprend TELLE QUELLE un pourcentage
+   servi par le moteur — aucune arithmétique n'est faite ici. */
+.bar { position: relative; height: 3px; background: var(--hair); border-radius: 2px; min-width: 56px; }
+.bar > i { position: absolute; inset: 0 auto 0 0; background: var(--t3); border-radius: 2px; }
+.bar[data-tone="ok"]    > i { background: var(--ok); }
+.bar[data-tone="warn"]  > i { background: var(--amber); }
+.bar[data-tone="na"]    > i { background: var(--na); }
+
+/* ==========================================================================
+   Tiroir de preuve — overlay latéral, invocable depuis N'IMPORTE QUEL chiffre
+   ========================================================================== */
+
+#scrim {
+  position: fixed; inset: 0;
+  background: rgba(5,5,8,.55);
+  opacity: 0; pointer-events: none;
+  transition: opacity .16s ease;
+  z-index: 40;
+}
+#scrim[data-open="1"] { opacity: 1; pointer-events: auto; }
+
+/* CE QUI ÉTAIT FAUX (corrigé le 2026-08-05) : le tiroir fermé n'était masqué que
+   par `transform: translateX(101%)`. Une translation ne retire RIEN du document :
+   le bouton « Échap ✕ », les deux boutons « copier » et les lignes cliquables du
+   tableau de preuve restaient dans l'ordre de tabulation, hors écran. Après une
+   preuve consultée puis Échap, le focus clavier quittait la page ; et comme le
+   tiroir porte `aria-hidden="true"` une fois fermé, un lecteur d'écran
+   rencontrait des éléments focusables sous un ancêtre masqué — violation ARIA.
+   Le tiroir était le SEUL panneau du cockpit non retiré du flux (`#flux` et
+   `#help` utilisent `display: none`).
+
+   CE QUE CETTE VERSION GARANTIT : fermé, le tiroir est `visibility: hidden`, donc
+   ni focusable, ni lu, ni cliquable — l'attribut `aria-hidden` cesse de mentir.
+   La transition de `visibility` est RETARDÉE de la durée du glissement (`0s linear
+   .18s`), pour que le panneau reste visible pendant qu'il sort ; à l'ouverture
+   elle est immédiate (`0s`), pour qu'il soit focusable dès le premier pixel.
+   `visibility` étant héritée, elle redevient `visible` sur les enfants sans
+   qu'aucune règle ne le demande. */
+#drawer {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: min(760px, 92vw);
+  background: var(--s1);
+  border-left: 1px solid var(--hair2);
+  transform: translateX(101%);
+  visibility: hidden;
+  transition: transform .18s ease, visibility 0s linear .18s;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+}
+#drawer[data-open="1"] {
+  transform: translateX(0);
+  visibility: visible;
+  transition: transform .18s ease, visibility 0s;
+}
+
+.drawer-head {
+  padding: var(--sp-3) var(--sp-3) var(--sp-2);
+  border-bottom: 1px solid var(--hair);
+  display: grid;
+  gap: var(--sp-h);
+  flex: 0 0 auto;
+}
+.drawer-eyebrow { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.drawer-title { font-size: 17px; color: var(--t1); }
+.drawer-close {
+  color: var(--t3); font-family: var(--mono); font-size: 12px;
+  border: 1px solid var(--hair2); border-radius: var(--r1); padding: 1px 7px;
+}
+.drawer-close:hover { color: var(--acc); border-color: var(--acc); }
+.drawer-body { overflow-y: auto; padding: var(--sp-3); display: grid; gap: var(--sp-3); }
+
+.def-list { display: grid; gap: var(--sp-2); }
+.def { display: grid; gap: 2px; }
+.def dt { font-size: 10px; letter-spacing: .13em; text-transform: uppercase; color: var(--t3); }
+.def dd { margin: 0; color: var(--t2); }
+
+.sql {
+  background: var(--bg);
+  border: 1px solid var(--hair);
+  border-radius: var(--r1);
+  padding: var(--sp-2);
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--t2);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+  max-height: 34vh;
+  overflow-y: auto;
+  user-select: all;
+}
+.sql-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
+.copy {
+  font-size: 10px; letter-spacing: .10em; text-transform: uppercase; color: var(--t3);
+  border: 1px solid var(--hair2); border-radius: var(--r1); padding: 1px 7px;
+}
+.copy:hover { color: var(--acc); border-color: var(--acc); }
+.copy[data-done="1"] { color: var(--ok); border-color: rgba(127,168,152,.4); }
+
+/* ==========================================================================
+   Filtres, recherche, pagination — la question posée au cerveau est LILAS
+   ========================================================================== */
+
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1); margin-bottom: var(--sp-2); }
+
+.field {
+  display: flex; align-items: center; gap: 6px;
+  border: 1px solid var(--hair2);
+  border-radius: var(--r2);
+  padding: 2px 10px;
+  background: var(--bg);
+}
+.field:focus-within { border-color: var(--acc); }
+.field label { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--t3); }
+.field input, .field select {
+  background: transparent; border: 0; color: var(--t1); font-size: 12px;
+  font-family: var(--mono); min-width: 90px; padding: 2px 0;
+}
+.field input:focus, .field select:focus { outline: none; }
+.field select option { background: var(--s2); color: var(--t1); }
+
+.pill {
+  font-size: 11px; color: var(--t2);
+  border: 1px solid var(--hair2); border-radius: var(--r2);
+  padding: 1px 9px; white-space: nowrap;
+}
+.pill:hover { color: var(--t1); border-color: var(--hair2); background: var(--s1); }
+.pill[aria-pressed="true"] { color: var(--acc); border-color: var(--acc); }
+
+.pager { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-2); }
+
+/* ==========================================================================
+   Détails d'entité
+   ========================================================================== */
+
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-4); }
+.stack  { display: grid; gap: var(--sp-2); }
+.kv     { display: grid; grid-template-columns: 148px minmax(0, 1fr); gap: var(--sp-1) var(--sp-2); font-size: 12px; }
+.kv dt  { color: var(--t3); }
+.kv dd  { margin: 0; color: var(--t2); min-width: 0; word-break: break-word; }
+
+.excerpt {
+  color: var(--t2);
+  font-size: 13px;
+  line-height: 1.65;
+  max-width: 84ch;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1); margin-bottom: var(--sp-2); font-size: 11px; color: var(--t3); }
+.crumbs .sep { color: var(--t3); }
+
+.tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.tag { font-family: var(--mono); font-size: 10px; color: var(--t3); border: 1px solid var(--hair); border-radius: var(--r2); padding: 0 7px; }
+
+/* ==========================================================================
+   Aide clavier
+   ========================================================================== */
+
+#help {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(5,5,8,.72);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+}
+#help[data-open="1"] { display: flex; }
+.help-card {
+  background: var(--s2);
+  border: 1px solid var(--hair2);
+  border-radius: var(--r2);
+  padding: var(--sp-4);
+  max-width: 640px;
+  width: 100%;
+  display: grid;
+  gap: var(--sp-2);
+  max-height: 80vh;
+  overflow-y: auto;
+}
+kbd {
+  border: 1px solid var(--hair2);
+  border-bottom-width: 2px;
+  border-radius: var(--r1);
+  padding: 0 5px;
+  font-size: 11px;
+  color: var(--t2);
+  background: var(--bg);
+}
+.help-row { display: grid; grid-template-columns: 132px 1fr; gap: var(--sp-2); font-size: 12px; color: var(--t2); align-items: baseline; }
+
+/* ==========================================================================
+   Divers
+   ========================================================================== */
+
+.spin { color: var(--t3); font-size: 12px; }
+.err  { color: var(--crit); font-size: 12px; }
+.hr   { height: 1px; background: var(--hair); border: 0; margin: var(--sp-3) 0; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+.skip-link {
+  position: absolute; left: var(--sp-2); top: -48px;
+  background: var(--s2); color: var(--t1);
+  padding: var(--sp-1) var(--sp-2); border-radius: var(--r1);
+  z-index: 80; transition: top .12s ease;
+}
+.skip-link:focus { top: var(--sp-2); }
+
+/* ==========================================================================
+   ACCESSIBILITÉ — remontée de contraste (AA)
+   --------------------------------------------------------------------------
+   Mesuré sur --bg (#0d0d10) :
+
+     --t1  #eaeaee   17.4:1   ✓ partout
+     --t2  #9a9aa3    6.97:1  ✓ partout
+     --acc #a99ade    7.75:1  ✓   --amber #c6a469  8.25:1  ✓
+     --ok  #7fa898    7.37:1  ✓   --crit  #bb6a52   4.90:1  ✓
+     --na  #6b6b75    3.69:1  ✗ texte courant · ✓ éléments non textuels
+     --t3  #61616b    3.17:1  ✗ texte courant · ✓ éléments non textuels
+
+   Les jetons de la direction E ne bougent pas : ce sont eux, l'identité. Ce
+   sont leurs EMPLOIS qui sont corrigés. Règle appliquée :
+
+     tout ce qui se LIT passe à --t2 ou mieux ;
+     --t3 et --na ne portent plus que du NON-TEXTE — filets, pistes, anneaux,
+     losanges, carets — ou un glyphe redondant avec un mot voisin (le « — »
+     d'une valeur absente, le « ◇ » d'un état déjà écrit en toutes lettres).
+
+   L'état « indisponible » ne perd donc rien : sa teinte neutre reste portée
+   par le losange creux, le pointillé et le cadre en tirets ; seul son TEXTE
+   devient lisible. Aucun état n'est jamais porté par la couleur seule.
+   ========================================================================== */
+
+.eyebrow,
+.faint,
+.ts,
+.brand-sub,
+.vital-label,
+.nav-key,
+.nav-count,
+.link-live,
+.ev-stage,
+.ev-sub,
+.card-key,
+.evidence-cue,
+.link-note,
+.spin,
+.unit,
+.crumbs,
+.tag,
+.copy,
+.drawer-close,
+.field label,
+.na-title,
+.def dt,
+.kv dt,
+.na-row dt,
+.block-fact .k,
+table.data th {
+  color: var(--t2);
+}
+
+/* Le glyphe et le filet gardent la teinte neutre : ils ne se lisent pas. */
+.na-title .glyph { color: var(--na); }
+.crumbs .sep { color: var(--t3); }
+.nav-item[data-empty="1"] .nav-count { color: var(--t2); opacity: .7; }
+
+/* Un mot dans une pastille se lit — il passe à --t2 ; la bordure en tirets et
+   le glyphe portent la neutralité. */
+.chip[data-state="unavailable"] { color: var(--t2); }
+.chip[data-state="unavailable"] .glyph { color: var(--na); }
+
+/* Le NOM d'un maillon se lit ; sa valeur absente est un tiret, pas un mot. */
+.link[data-link="unavailable"] .link-name { color: var(--t2); }
+
+/* L'unité de l'indice descend jusqu'à ~17 px quand l'écran est étroit : elle
+   cesse alors d'être un « grand texte » et doit repasser le seuil courant. */
+.health-value .unit { color: var(--t2); }
+
+/* « [événement inconnu : …] » est une PHRASE : elle se lit. L'italique, lui,
+   suffit à la distinguer d'un message composé depuis le catalogue. */
+.ev[data-unknown="1"] .ev-msg { color: var(--t2); font-style: italic; }
+
+@media (max-width: 1080px) {
+  :root { --rail-w: 168px; }
+  #view { padding: var(--sp-3) var(--sp-3) var(--sp-4); }
+  .vital-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .vital:nth-child(4) { border-left: 0; }
+  .chain { grid-auto-flow: row; grid-auto-columns: auto; }
+}
+
+/* ==========================================================================
+   V2 — LE CERVEAU RACONTE SA VIE
+   --------------------------------------------------------------------------
+   Aucune teinte nouvelle. Le partage sémantique reste intact :
+
+     --acc  LILAS   présence humaine  — focus, sélection, nœud choisi au graphe.
+     --amber AMBRE  la machine qui s'enregistre — trace d'une relecture, alerte.
+     --crit ROUGE   rare — la dette root-level le mérite : ce savoir est écrit
+                    et ne remonte jamais.
+     --na   NEUTRE  l'organe non branché : ni vert, ni rouge, jamais un zéro.
+
+   Un seul élément respire dans tout le cockpit (l'indice de santé, déjà en
+   place). Rien ici ne s'anime, rien ne clignote, rien ne défile tout seul.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1 · LA SYNTHÈSE NARRATIVE — des phrases composées depuis les gabarits servis
+   -------------------------------------------------------------------------- */
+
+.narrative { display: grid; gap: 2px; }
+.narr-row  { display: grid; gap: var(--sp-1); }
+
+.narr {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: var(--sp-1);
+  align-items: baseline;
+  text-align: left;
+  padding: 7px var(--sp-1) 7px 0;
+  border-bottom: 1px solid transparent;
+  width: 100%;
+}
+.narr:hover { border-bottom-color: var(--hair); }
+
+/* La puce n'est pas un ornement : elle dit « cette phrase a des sources ». */
+.narr-mark {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--t3);
+  transform: translateY(-3px);
+}
+.narr:hover .narr-mark,
+.narr[aria-expanded="true"] .narr-mark { background: var(--acc); }
+
+.narr-text { color: var(--t1); font-size: 15px; line-height: 1.5; max-width: 84ch; }
+.narr[aria-expanded="true"] .narr-text { color: var(--acc); }
+
+/* Un gabarit inconnu ne se déguise pas en phrase du cerveau. */
+.narr[data-unknown="1"] .narr-text { color: var(--t2); font-style: italic; }
+.narr[data-unknown="1"] .narr-mark { background: var(--na); }
+
+.narr-sources {
+  display: grid; gap: var(--sp-1);
+  margin: 0 0 var(--sp-2) 22px;
+  padding-left: var(--sp-2);
+  border-left: 1px solid var(--hair2);
+}
+
+/* --------------------------------------------------------------------------
+   2 · LES DELTAS DU JOUR — en grand, chacun avec son chemin de preuve
+   -------------------------------------------------------------------------- */
+
+.deltas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
+  gap: 1px;
+  background: var(--hair);
+  border: 1px solid var(--hair);
+}
+
+.delta {
+  display: grid;
+  gap: var(--sp-h);
+  align-content: start;
+  background: var(--bg);
+  padding: var(--sp-2);
+  text-align: left;
+  min-height: 132px;
+}
+.delta:hover { background: var(--s1); }
+
+.delta-label { color: var(--t2); font-size: 12px; }
+.delta-value {
+  font-size: 30px;
+  line-height: 1.1;
+  color: var(--t1);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+.delta-value .unit { font-size: 12px; color: var(--t3); margin-left: 5px; }
+
+.delta[data-state="warn"]     .delta-value { color: var(--amber); }
+.delta[data-state="critical"] .delta-value { color: var(--crit); }
+
+/* L'ABSENCE DE MESURE. Ni zéro, ni erreur rouge : un mot, en teinte neutre,
+   à une taille qui ne prétend pas être un chiffre. C'est la règle centrale de
+   cet écran — « +0 contradiction » se lirait comme une bonne nouvelle. */
+.delta[data-na="1"] { background: var(--s1); }
+.delta-na {
+  font-family: var(--sans);
+  font-size: 15px;
+  color: var(--na);
+  font-style: italic;
+  letter-spacing: .01em;
+}
+.delta[data-na="1"] .delta-label { color: var(--t3); }
+
+.delta-detail { color: var(--t2); font-size: 11px; line-height: 1.45; }
+.delta-why    { color: var(--t2); font-size: 12px; line-height: 1.45; }
+.delta-foot   { display: flex; align-items: center; gap: 6px; margin-top: auto; padding-top: var(--sp-1); }
+.delta-foot .card-key { font-family: var(--mono); font-size: 10px; color: var(--t3); }
+.delta:hover .evidence-cue { color: var(--acc); }
+
+/* --------------------------------------------------------------------------
+   3 · L'ARBRE DES TERRITOIRES
+   -------------------------------------------------------------------------- */
+
+.scope-root {
+  display: flex; align-items: center; gap: var(--sp-1); flex-wrap: wrap;
+  margin: var(--sp-3) 0 var(--sp-h);
+  padding-bottom: var(--sp-h);
+}
+.scope-root:first-child { margin-top: 0; }
+
+.scope-name { display: inline-flex; align-items: center; gap: var(--sp-1); color: var(--t1); font-size: 15px; }
+button.scope-name:hover { color: var(--acc); }
+
+.scope-branch {
+  width: 9px; height: 1px;
+  background: var(--hair2);
+  flex: 0 0 auto;
+}
+.scope-leaf { display: inline-flex; align-items: center; gap: 6px; }
+.scope-leaf .scope-branch { width: 14px; }
+
+/* --------------------------------------------------------------------------
+   4 · SÉRIES DESSINÉES — sparkline et bande temporelle
+   Ces figures ne portent AUCUN chiffre : les valeurs sont dans l'infobulle
+   native de chaque barre (élément <title>), donc lisibles au clavier et par
+   un lecteur d'écran. La hauteur est un pixel, pas une mesure.
+   -------------------------------------------------------------------------- */
+
+.spark-wrap { border: 1px solid var(--hair); background: var(--s1); padding: var(--sp-1); }
+.spark { display: block; width: 100%; height: 96px; }
+.spark-bar  { fill: var(--t3); }
+.spark-bar:hover { fill: var(--acc); }
+.spark-axis { stroke: var(--hair2); stroke-width: 1; }
+
+.band-row {
+  display: grid;
+  grid-template-columns: 168px 1fr;
+  gap: var(--sp-2);
+  align-items: center;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--hair);
+}
+.band-name { color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.band-plot { min-width: 0; }
+.band { display: block; width: 100%; height: 34px; }
+.band-bar { fill: var(--t2); }
+.band-hit { fill: transparent; cursor: pointer; }
+.band-hit:hover { fill: rgba(169,154,222,.13); }
+
+/* --------------------------------------------------------------------------
+   5 · ONGLETS DES VUES D'ATOMES
+   Une vue non mesurable reste VISIBLE et marquée. La masquer laisserait croire
+   que le cerveau la mesure et n'y trouve rien.
+   -------------------------------------------------------------------------- */
+
+.tabs {
+  display: flex; flex-wrap: wrap; gap: 1px;
+  background: var(--hair);
+  border: 1px solid var(--hair);
+}
+.tab {
+  display: inline-flex; align-items: baseline; gap: 6px;
+  background: var(--bg);
+  padding: 9px var(--sp-2);
+  color: var(--t2);
+  border-bottom: 2px solid transparent;
+}
+.tab:hover { background: var(--s1); color: var(--t1); }
+.tab[aria-selected="true"] {
+  background: var(--s2);
+  color: var(--t1);
+  border-bottom-color: var(--acc);
+}
+.tab-name  { font-size: 12px; }
+.tab-count { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 12px; color: var(--t3); }
+.tab[aria-selected="true"] .tab-count { color: var(--t1); }
+.tab[data-state="warn"]     .tab-count { color: var(--amber); }
+.tab[data-state="critical"] .tab-count { color: var(--crit); }
+.tab[data-state="unavailable"] { color: var(--na); }
+.tab[data-state="unavailable"] .tab-count { color: var(--na); }
+
+/* --------------------------------------------------------------------------
+   6 · LE GRAPHE DE PROJET
+   Rendu en SVG, sans bibliothèque. Les arêtes ne sont PAS des liens déclarés :
+   leur nature est distinguée par le TRAIT (plein, tireté, pointillé), jamais
+   par la seule couleur — et la légende le dit sous la figure.
+   -------------------------------------------------------------------------- */
+
+.graph-wrap {
+  border: 1px solid var(--hair);
+  background: var(--s1);
+  overflow: hidden;
+}
+.graph { display: block; width: 100%; height: auto; max-height: 74vh; }
+
+.g-edge { stroke: var(--hair2); stroke-width: 1; fill: none; }
+.g-edge[data-kind="contains"] { stroke: var(--hair2); stroke-width: 1.2; }
+.g-edge[data-kind="lineage"]  { stroke: var(--amber); stroke-width: 1.2; stroke-dasharray: 6 3; opacity: .75; }
+.g-edge[data-kind="semantic"] { stroke: var(--na); stroke-width: .7; stroke-dasharray: 1.5 3.5; opacity: .5; }
+
+.g-edge[data-focus="on"]  { stroke: var(--acc); stroke-width: 1.6; opacity: 1; }
+.g-edge[data-focus="off"] { opacity: .08; }
+
+.g-dot { fill: var(--t3); stroke: var(--bg); stroke-width: 1.5; }
+.g-node[data-kind="project"] .g-dot { fill: var(--t1); }
+.g-node[data-kind="scope"]   .g-dot { fill: var(--t2); }
+.g-node[data-kind="theme"]   .g-dot { fill: var(--na); }
+.g-node { cursor: pointer; }
+.g-node:hover .g-dot { fill: var(--acc); }
+
+/* Le foyer est LILAS : c'est la présence humaine dans la figure, pas un état
+   de la donnée. Il porte aussi un anneau — l'état ne tient pas à la couleur. */
+.g-node[data-focus="on"] .g-dot { fill: var(--acc); stroke: var(--acc); stroke-width: 3; }
+.g-node[data-focus="off"] { opacity: .22; }
+.g-node:focus-visible { outline: none; }
+.g-node:focus-visible .g-dot { stroke: var(--acc); stroke-width: 3; }
+
+.g-label {
+  fill: var(--t2);
+  font-family: var(--mono);
+  font-size: 10px;
+  pointer-events: none;
+}
+.g-node[data-kind="project"] .g-label { fill: var(--t1); font-size: 13px; }
+.g-node[data-focus="on"] .g-label { fill: var(--acc); }
+
+.graph-focus {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1);
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px solid var(--hair2);
+  border-left: 2px solid var(--acc);
+  background: var(--s1);
+}
+.g-key { width: 60px; height: 12px; flex: 0 0 auto; }
+.g-legend-row { display: flex; align-items: center; gap: var(--sp-1); }
+
+/* --------------------------------------------------------------------------
+   7 · LES MESURES D'UN ÉVÉNEMENT (chronologie)
+   -------------------------------------------------------------------------- */
+
+.measures { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.measure  { display: inline-flex; gap: 4px; align-items: baseline; }
+.measure .k { color: var(--t3); font-family: var(--mono); font-size: 10px; }
+.measure .v { color: var(--t2); font-family: var(--mono); font-size: 11px; font-variant-numeric: tabular-nums; }
+
+/* --------------------------------------------------------------------------
+   8 · LA TRACE D'UNE RELECTURE — ambre : la machine qui s'enregistre.
+   Elle apparaît quand un FAIT OBSERVÉ a fait relire l'écran. Jamais autrement :
+   aucun mouvement de ce cockpit n'est décoratif.
+   -------------------------------------------------------------------------- */
+
+.live-mark {
+  border-left: 2px solid var(--amber);
+  background: var(--s1);
+  color: var(--t2);
+  font-size: 11px;
+  padding: 5px var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+
+/* --------------------------------------------------------------------------
+   9 · ADAPTATIONS
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 1080px) {
+  .deltas { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  .delta-value { font-size: 24px; }
+  .band-row { grid-template-columns: 108px 1fr; gap: var(--sp-1); }
+  .graph { max-height: 60vh; }
+}
+
+/* Le cockpit n'anime rien ici, mais la règle reste explicite : si le mouvement
+   est refusé, aucune transition introduite par la V2 ne s'exécute. */
+@media (prefers-reduced-motion: reduce) {
+  .narr, .delta, .tab, .g-node, .band-hit, .spark-bar { transition: none !important; }
+}
+
+/* Contraste : sur fond --s1, ces textes restent au-dessus du seuil AA. */
+.delta-detail, .narr-sources .tiny { color: var(--t2); }
+
+/* --------------------------------------------------------------------------
+   10 · LA CASCADE — « le cerveau pense »
+   Un ENCHAÎNEMENT, pas une liste. Le connecteur vertical et sa patte
+   horizontale sont des BORDURES et des pseudo-éléments : aucun caractère de
+   dessin (│ ├ └) n'entre dans le document, parce qu'un lecteur d'écran les
+   lirait à voix haute et qu'un copier-coller les emporterait.
+
+   L'état d'une étape est porté par TROIS choses, jamais par la seule teinte :
+   une marque typographique (· ■ – ◇), un mot servi aux lecteurs d'écran, et
+   la forme du trait (plein quand l'étape a eu lieu, tireté quand elle n'a pas
+   eu lieu ou n'a pas été mesurée).
+   -------------------------------------------------------------------------- */
+
+.casc-list { display: grid; gap: var(--sp-3); }
+
+.casc {
+  border: 1px solid var(--hair);
+  border-left: 2px solid var(--hair2);
+  background: var(--s1);
+  padding: var(--sp-2) var(--sp-2) var(--sp-1);
+}
+.casc[data-outcome="failed"]            { border-left-color: var(--crit); }
+.casc[data-outcome="no_new_knowledge"]  { border-left-color: var(--t3); }
+.casc[data-outcome="learned"]           { border-left-color: var(--ok); }
+
+/* Une cascade arrivée PENDANT la lecture : ambre, la machine qui s'enregistre.
+   Le mot accompagne la teinte — l'état ne tient jamais à la couleur seule. */
+.casc[data-new="1"] { border-left-color: var(--amber); }
+.casc[data-new="1"] .casc-head::after {
+  content: 'arrivée pendant votre lecture';
+  grid-column: 1 / -1;
+  font-size: 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.casc-head {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+  gap: var(--sp-1) var(--sp-2);
+  align-items: start;
+  padding-bottom: var(--sp-1);
+  border-bottom: 1px solid var(--hair);
+  margin-bottom: var(--sp-2);
+}
+
+.casc-subject { display: grid; gap: 2px; text-align: left; min-width: 0; }
+.casc-time  { font-size: 11px; color: var(--amber); font-variant-numeric: tabular-nums; }
+.casc-title { color: var(--t1); font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.casc-meta  { font-size: 11px; color: var(--t3); font-family: var(--mono); }
+.casc-subject:hover .casc-title { color: var(--acc); }
+.casc-subject:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+
+.casc-run     { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.casc-verdict { display: grid; gap: 2px; justify-items: end; }
+
+.casc-steps { display: block; }
+
+.casc-step {
+  display: grid;
+  grid-template-columns: 54px 20px minmax(0, 1fr);
+  column-gap: var(--sp-1);
+}
+.casc-at {
+  grid-column: 1;
+  padding-top: 1px;
+  text-align: right;
+  font-size: 11px;
+  color: var(--t3);
+  font-variant-numeric: tabular-nums;
+}
+.casc-rail { grid-column: 2; position: relative; align-self: stretch; }
+.casc-cell { grid-column: 3; min-width: 0; padding-bottom: var(--sp-2); display: grid; gap: 2px; }
+
+/* Le trait vertical. Il commence au premier nœud et s'arrête au dernier :
+   la cascade a un début et une fin, et le dessin le dit. */
+.casc-rail::before {
+  content: '';
+  position: absolute;
+  left: 9px; top: 0; bottom: 0;
+  border-left: 1px solid var(--hair2);
+}
+.casc-step:first-child .casc-rail::before { top: 10px; }
+.casc-step:last-child  .casc-rail::before { bottom: auto; height: 10px; }
+
+/* La patte horizontale qui rejoint l'étape. */
+.casc-rail::after {
+  content: '';
+  position: absolute;
+  left: 10px; top: 10px; width: 10px;
+  border-top: 1px solid var(--hair2);
+}
+/* Une étape qui n'a pas eu lieu, ou qui n'a jamais été mesurée : trait TIRETÉ.
+   La forme dit ce que la couleur seule ne dirait pas. */
+.casc-step[data-state="skipped"]     .casc-rail::after { border-top-style: dashed; }
+.casc-step[data-state="unavailable"] .casc-rail::after { border-top-style: dashed; }
+
+.casc-dot {
+  position: absolute;
+  left: 3px; top: 3px;
+  width: 13px; height: 15px;
+  line-height: 15px;
+  text-align: center;
+  font-style: normal;
+  font-size: 11px;
+  background: var(--s1);
+  color: var(--t2);
+}
+.casc-dot[data-state="failed"]      { color: var(--crit); }
+.casc-dot[data-state="skipped"]     { color: var(--t3); }
+.casc-dot[data-state="unavailable"] { color: var(--na); }
+
+.casc-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px var(--sp-2); }
+.casc-stage { color: var(--t1); font-size: 13px; }
+.casc-step[data-state="skipped"]     .casc-stage { color: var(--t2); }
+.casc-step[data-state="unavailable"] .casc-stage { color: var(--na); }
+.casc-step[data-state="failed"]      .casc-stage { color: var(--t1); }
+
+.casc-targets { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+
+.casc-target {
+  display: inline-flex; align-items: baseline; gap: 5px;
+  padding: 1px 7px;
+  border: 1px solid var(--hair2);
+  border-radius: var(--r1);
+  background: var(--s2);
+  color: var(--t2);
+  font-size: 11px;
+  max-width: 100%;
+}
+.casc-target-kind { font-family: var(--mono); font-size: 9px; color: var(--t3); letter-spacing: .04em; }
+button.casc-target:hover { border-color: var(--acc); color: var(--t1); }
+button.casc-target:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.casc-target[data-dead="1"] { border-style: dashed; color: var(--na); }
+
+.casc-say {
+  display: block;
+  text-align: left;
+  color: var(--t2);
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 1px 0;
+  border-bottom: 1px dotted transparent;
+}
+.casc-say:hover { color: var(--t1); border-bottom-color: var(--hair2); }
+.casc-say:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.casc-say[aria-expanded="true"] { color: var(--t1); }
+.casc-say[data-unknown="1"] .casc-say-text { color: var(--na); font-style: italic; }
+.casc-step[data-state="unavailable"] .casc-say { color: var(--na); }
+
+.casc-dur { font-size: 10px; color: var(--t3); font-variant-numeric: tabular-nums; }
+
+.casc-detail {
+  display: grid; gap: var(--sp-1);
+  margin-top: var(--sp-1);
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px solid var(--hair);
+  border-left: 2px solid var(--acc);
+  background: var(--s2);
+}
+
+.casc-foot { border-top: 1px solid var(--hair); padding-top: var(--sp-1); display: grid; gap: 4px; }
+
+/* La barre des nouveautés. Elle COLLE en haut de la liste et n'y touche pas :
+   tant qu'elle n'est pas cliquée, rien ne se déplace sous les yeux du lecteur. */
+.casc-newbar {
+  position: sticky; top: 0; z-index: 4;
+  padding: var(--sp-1) 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--amber);
+}
+.casc-newbar .pill { border-color: var(--amber); color: var(--amber); }
+
+/* --------------------------------------------------------------------------
+   11 · LE LECTEUR DE REJEU
+   Un lecteur de film, pas un tableau. La position de lecture est LILAS : c'est
+   la présence humaine dans le temps du cerveau. Ce qui a bougé pendant l'image
+   est AMBRE : c'est la machine qui s'enregistre.
+   -------------------------------------------------------------------------- */
+
+.rp-days { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.rp-day {
+  display: grid; gap: 0;
+  padding: 5px 9px;
+  min-width: 96px;
+  border: 1px solid var(--hair2);
+  border-radius: var(--r1);
+  background: var(--s1);
+  text-align: left;
+}
+.rp-day-date { font-size: 11px; color: var(--t2); font-variant-numeric: tabular-nums; }
+.rp-day-n    { font-size: 15px; color: var(--t1); font-variant-numeric: tabular-nums; }
+.rp-day-mark { font-size: 9px; letter-spacing: .05em; text-transform: uppercase; color: var(--t3); min-height: 12px; }
+
+.rp-day[data-tone="warn"]        { border-color: rgba(198,164,105,.34); }
+.rp-day[data-tone="warn"] .rp-day-mark { color: var(--amber); }
+/* Une journée VIDE reste dans la liste, marquée : un jour sans apprentissage
+   est une information, et la masquer serait mentir par omission. */
+.rp-day[data-empty="1"] { border-style: dashed; background: transparent; }
+.rp-day[data-empty="1"] .rp-day-n { color: var(--na); }
+.rp-day[data-empty="1"] .rp-day-mark { color: var(--na); }
+.rp-day:hover { border-color: var(--acc); }
+.rp-day:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.rp-day[aria-pressed="true"] { border-color: var(--acc); background: var(--s2); }
+.rp-day[aria-pressed="true"] .rp-day-date { color: var(--acc); }
+
+.rp-transport { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.rp-sep { width: 1px; height: 18px; background: var(--hair2); }
+.rp-speeds { display: inline-flex; gap: 4px; }
+.rp-play[disabled] { color: var(--na); border-color: var(--hair); cursor: not-allowed; }
+
+/* La frise : une graduation par image, dans l'ordre servi. Les images sont
+   espacées d'un `frame_ms` constant — la frise EST donc l'axe du film, et
+   aucune position n'a besoin d'être calculée : le CSS les répartit. */
+.rp-frise {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 34px;
+  padding: 0 1px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r1);
+  background: var(--s1);
+  overflow: hidden;
+}
+.rp-tick {
+  flex: 1 1 0;
+  min-width: 2px;
+  height: 40%;
+  background: var(--t3);
+  border-radius: 1px 1px 0 0;
+}
+.rp-tick[data-kind="narratif"] { height: 82%; background: var(--amber); }
+.rp-tick:hover { background: var(--t1); }
+.rp-tick:focus-visible { outline: 2px solid var(--acc); outline-offset: 1px; }
+/* La tête de lecture : lilas, pleine hauteur, et bordée — repérable même
+   sans distinguer les couleurs. */
+.rp-tick[data-current="1"] {
+  height: 100%;
+  background: var(--acc);
+  box-shadow: inset 0 0 0 1px var(--t1);
+}
+
+.rp-frame {
+  border: 1px solid var(--hair);
+  border-left: 2px solid var(--acc);
+  background: var(--s1);
+  padding: var(--sp-1) var(--sp-2);
+}
+.rp-frame-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px var(--sp-2); }
+.rp-clock { font-size: 26px; color: var(--t1); font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+.rp-seq   { font-size: 11px; color: var(--t2); font-variant-numeric: tabular-nums; }
+
+.rp-counters { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 1px; background: var(--hair); border: 1px solid var(--hair); }
+.rp-counter  { display: grid; gap: 0; padding: 6px var(--sp-1); background: var(--s1); }
+.rp-counter-k { font-size: 11px; color: var(--t2); }
+.rp-counter-v { font-size: 20px; color: var(--t1); font-variant-numeric: tabular-nums; }
+.rp-counter-d { font-size: 11px; color: var(--t3); font-variant-numeric: tabular-nums; min-height: 15px; }
+/* Ce qui a bougé PENDANT cette image : ambre, et chiffré. Le signe « + » et la
+   valeur portent l'information — la teinte ne fait que la souligner. */
+.rp-counter[data-moved="1"] { background: var(--s2); }
+.rp-counter[data-moved="1"] .rp-counter-d { color: var(--amber); }
+.rp-counter[data-moved="1"] .rp-counter-v { color: var(--t1); }
+
+.rp-events { display: grid; gap: var(--sp-1); }
+.rp-ev {
+  border-left: 1px solid var(--hair2);
+  padding-left: var(--sp-1);
+  display: grid; gap: 4px;
+}
+.rp-ev[data-type="atome_cree"]     { border-left-color: var(--ok); }
+.rp-ev[data-type="atome_remplace"] { border-left-color: var(--amber); }
+.rp-ev[data-type="candidat_ecarte"]{ border-left-color: var(--crit); }
+.rp-ev[data-type="messages_pouls"] { border-left-style: dotted; }
+.rp-ev[data-type="rappels_pouls"]  { border-left-style: dotted; }
+.rp-ev[data-unknown="1"] .rp-ev-text { color: var(--na); font-style: italic; }
+.rp-ev-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.rp-ev-text { color: var(--t2); font-size: 12px; line-height: 1.5; }
+.rp-ev-src  { display: flex; flex-wrap: wrap; gap: 4px; }
+
+@media (max-width: 1080px) {
+  .casc-head { grid-template-columns: minmax(0, 1fr); }
+  .casc-verdict { justify-items: start; }
+  .casc-step { grid-template-columns: 44px 18px minmax(0, 1fr); }
+  .rp-counters { grid-template-columns: repeat(auto-fill, minmax(136px, 1fr)); }
+  .rp-clock { font-size: 20px; }
+}
+
+/* Mouvement refusé : le lecteur de rejeu devient un PAS-À-PAS. Il ne perd
+   aucune information — il perd l'avance automatique, et le dit à l'écran. */
+@media (prefers-reduced-motion: reduce) {
+  .casc-say, .casc-target, .rp-day, .rp-tick, .rp-play { transition: none !important; }
+  .rp-tick { scroll-behavior: auto; }
+}
+
+.rp-depth {
+  width: 78px;
+  padding: 3px 6px;
+  border: 1px solid var(--hair2);
+  border-radius: var(--r1);
+  background: var(--s2);
+  color: var(--t1);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.rp-depth:focus-visible { outline: 2px solid var(--acc); outline-offset: 1px; }
+
+/* ==========================================================================
+   ACCESSIBILITÉ — remontée de contraste (AA), SECONDE PASSE · V2 et V3
+   --------------------------------------------------------------------------
+   CE QUI ÉTAIT FAUX (corrigé le 2026-08-05) : la première passe (bloc « AA »
+   plus haut) ne couvrait que la surface V1. Tout le CSS écrit ENSUITE — la
+   bande temporelle, les onglets de vues, la cascade, le rejeu — a réintroduit
+   --t3 et --na sur du TEXTE, avec une spécificité SUPÉRIEURE (`.delta-foot
+   .card-key` bat `.card-key`), donc gagnante quel que soit l'ordre. Rapports
+   réellement obtenus, luminance relative WCAG :
+
+              sur --bg    sur --s1    sur --s2
+     --t3       3.17         2.97        2.80
+     --na       3.68         3.45        3.25
+     --t2       6.95         6.52        6.14   ← seuil AA courant : 4.5
+
+   Le seuil du « grand texte » (3:1) ne sauve rien ici : il exige 18.66 px
+   (14 pt gras / 18.66 px normal) et les fautes vont de 9 px à 18 px. Pire, la
+   première passe MESURAIT sur --bg, alors que ces textes sont posés sur --s1
+   ou --s2, plus clairs : le fichier se croyait à 3.17:1 là où il était à 2.80.
+
+   CE QUE CETTE VERSION GARANTIT : ce bloc est le DERNIER du fichier et reprend
+   la spécificité exacte de chaque règle fautive, donc il gagne. La règle de la
+   première passe est inchangée, seulement étendue :
+
+     tout ce qui se LIT — un mot, un chiffre — passe à --t2 ou mieux ;
+     --t3 et --na ne portent plus que du NON-TEXTE (filets, pistes, anneaux,
+     barres, têtes de lecture) ou un GLYPHE redondant avec un mot voisin.
+
+   Aucun état ne perd son signal : « indisponible » reste porté par le losange
+   creux, le pointillé, le cadre en tirets et le mot lui-même. Aucun état n'est
+   jamais porté par la couleur seule — c'est déjà la doctrine du fichier.
+
+   NE SONT PAS REMONTÉS, et c'est délibéré :
+     * les GLYPHES de remplacement « — » et « ◇ » (`.card-value`, `.vital-value`,
+       `.health-value`, `table.data td.na`, `.tab[…="unavailable"] .tab-count`,
+       `.crumbs .sep`, `.casc-dot`, `.na-title .glyph`) : ils ne se lisent pas,
+       ils doublent un mot voisin. Vérifié le 2026-08-05 : sur les 148 métriques
+       servies, AUCUNE ne porte à la fois `state = "unavailable"` et une valeur
+       non nulle — ces éléments n'affichent donc jamais autre chose qu'un tiret ;
+     * `.rp-play[disabled]` : WCAG 1.4.3 exempte explicitement le texte d'un
+       composant d'interface INACTIF. Le bouton est réellement `disabled`.
+   ========================================================================== */
+
+/* --- Un MOT ou un CHIFFRE qui se lit : jamais sous --t2. ------------------ */
+.delta-value .unit,
+.delta[data-na="1"] .delta-label,
+.delta-foot .card-key,
+.band-name,
+.tab-count,
+.measure .k,
+.casc-meta,
+.casc-at,
+.casc-target-kind,
+.casc-dur,
+.rp-day-mark,
+.rp-counter-d { color: var(--t2); }
+
+/* --- L'ABSENCE, l'INCONNU, le MORT : le mot se lit, la forme porte l'état.
+   « non mesuré » est le cœur de la doctrine de cet écran — c'était le texte le
+   moins lisible de tout le cockpit (3.45:1 sur son propre fond --s1). --------- */
+.delta-na                                        { color: var(--t2); }
+.tab[data-state="unavailable"]                   { color: var(--t2); }
+.casc-target[data-dead="1"]                      { color: var(--t2); }
+.casc-step[data-state="unavailable"] .casc-stage { color: var(--t2); }
+.casc-step[data-state="unavailable"] .casc-say   { color: var(--t2); }
+.rp-day[data-empty="1"] .rp-day-n                { color: var(--t2); }
+.rp-day[data-empty="1"] .rp-day-mark             { color: var(--t2); }
+
+/* Une PHRASE reste une phrase, même inconnue : l'italique la distingue d'un
+   message composé depuis le catalogue — la teinte n'a jamais eu à le faire.
+   Même traitement que `.ev[data-unknown="1"] .ev-msg`, première passe. */
+.rp-ev[data-unknown="1"] .rp-ev-text     { color: var(--t2); font-style: italic; }
+.casc-say[data-unknown="1"] .casc-say-text { color: var(--t2); font-style: italic; }
+
+/* --- Deux maillons oubliés par la première passe. -------------------------
+   `.link[data-link="unavailable"] .link-name` avait été remonté ; sa VALEUR ne
+   l'avait pas été, au motif qu'elle n'affiche qu'un tiret. C'est faux : dans
+   app.js, `linkShape()` rend `unavailable` dès que `mesurable === false`, AVANT
+   même de regarder `objets`. Un maillon déclaré non mesurable par le moteur mais
+   portant un compte affiche donc un NOMBRE de 18 px à 3.45:1. Le tiret n'est pas
+   garanti par le contrat, la lisibilité doit l'être.
+   `.link[data-link="skipped"] .link-name` est un MOT (le nom du maillon) laissé à
+   --t3 : la barre en diagonale et la marque barrée portent déjà l'état. */
+.link[data-link="unavailable"] .link-value { color: var(--t2); }
+.link[data-link="skipped"] .link-name      { color: var(--t2); }

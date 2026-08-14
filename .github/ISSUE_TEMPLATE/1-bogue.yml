@@ -1,0 +1,79 @@
+name: Bogue
+description: Quelque chose se comporte autrement que ce que la documentation annonce.
+title: "[bogue] "
+labels: ["bogue"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Un bogue, ici, c'est un écart entre ce que la documentation promet et ce que
+        la machine fait.** Si la documentation ne promet rien sur ce point, ouvrez
+        plutôt une **question** : c'est elle qui est en défaut.
+
+        ⚠️ **Avant de coller quoi que ce soit**, relisez-le : les journaux d'ARAC
+        contiennent vos conversations. Une clé d'API, une phrase privée, un nom de
+        client se cachent facilement dans dix lignes de `journalctl`.
+
+  - type: textarea
+    id: attendu-observe
+    attributes:
+      label: Ce que la documentation annonce, et ce que vous avez vu
+      description: Citez le passage si vous l'avez sous la main.
+      placeholder: |
+        Annoncé (docs/DEMARRAGE-RAPIDE.md étape 6) : « sains 12  à surveiller 0  en échec 0 »
+        Observé : « sains 9  à surveiller 1  en échec 2 »
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduire
+    attributes:
+      label: Comment le reproduire
+      description: Les commandes exactes, dans l'ordre, depuis un état connu.
+      placeholder: |
+        1. sudo ./bootstrap/bootstrap.sh --from migrations
+        2. sudo ./bootstrap/checks/verify_install.sh
+        3. la ligne « rôle en lecture stricte » passe au rouge
+    validations:
+      required: true
+
+  - type: textarea
+    id: preuve
+    attributes:
+      label: Ce que la machine dit
+      description: >-
+        Sortie de commande, extrait de journal, réponse d'API. **Relu et expurgé.**
+        Si un chiffre du cockpit est en cause, joignez son `evidence` — le SQL est
+        dans la réponse, et il vaut mieux que n'importe quelle description.
+      render: text
+
+  - type: input
+    id: etape
+    attributes:
+      label: À quelle étape
+      placeholder: "entretien · bootstrap · pont · premier cycle · cockpit · rappel · sauvegarde"
+
+  - type: textarea
+    id: contexte
+    attributes:
+      label: Le terrain
+      description: Sans identifiant, sans nom de machine.
+      value: |
+        - Ubuntu / Debian, version :
+        - PostgreSQL et pgvector :
+        - Python :
+        - Ce dépôt, version ou commit :
+        - Machine source : Mac / Linux / aucune
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: verifications
+    attributes:
+      label: Les trois vérifications qui résolvent la moitié des tickets
+      options:
+        - label: "`make test` passe au vert sur ce dépôt"
+        - label: "`ARAC_ALLOW_PAID_AI` vaut bien `1` (si le cerveau ne produit aucun atome)"
+        - label: "`ARAC_NODE_ID` est identique côté serveur et côté machine source (si rien n'arrive)"
+        - label: "J'ai relu ce que je colle : aucune clé, aucun extrait de conversation privée."
+          required: true

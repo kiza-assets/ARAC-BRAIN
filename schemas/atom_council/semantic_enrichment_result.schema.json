@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arac.local/schemas/atom_council/semantic_enrichment_result.schema.json",
+  "title": "Atom Council — semantic_enrichment_result (V1.6G2)",
+  "description": "Sortie du PREMIER appel semantique reel (provider=claude) sur des chunks redacted. Contenu redacted uniquement : jamais de transcript brut, jamais de secret. Bornes courtes anti-transcript (proposed_body_redacted <= 600 chars). La sortie est validee machine en fail-closed avant toute entree dans le Conseil ; le human gate reste seul a autoriser une ecriture memoire.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "result_id",
+    "candidate_id",
+    "source_file_id_redacted",
+    "provider",
+    "model",
+    "chunks_consumed",
+    "facts",
+    "inferences",
+    "uncertainties",
+    "contradictions",
+    "proposed_title_redacted",
+    "proposed_body_redacted",
+    "proposed_scope",
+    "proposed_kind",
+    "memory_worthiness",
+    "overall_confidence",
+    "no_raw_confirmed",
+    "no_secret_confirmed",
+    "created_at"
+  ],
+  "properties": {
+    "result_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]+$",
+      "maxLength": 128
+    },
+    "candidate_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]+$",
+      "maxLength": 128
+    },
+    "source_file_id_redacted": {
+      "type": "string",
+      "maxLength": 64
+    },
+    "provider": {
+      "type": "string",
+      "enum": ["claude"]
+    },
+    "model": {
+      "type": "string",
+      "maxLength": 64
+    },
+    "chunks_consumed": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["chunk_id", "sha256_redacted_10hex"],
+        "properties": {
+          "chunk_id": { "type": "string", "maxLength": 32 },
+          "sha256_redacted_10hex": { "type": "string", "maxLength": 16 }
+        }
+      }
+    },
+    "facts": {
+      "type": "array",
+      "maxItems": 30,
+      "items": { "type": "string", "maxLength": 400 }
+    },
+    "inferences": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["statement", "basis_redacted", "confidence"],
+        "properties": {
+          "statement": { "type": "string", "maxLength": 400 },
+          "basis_redacted": { "type": "string", "maxLength": 400 },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+        }
+      }
+    },
+    "uncertainties": {
+      "type": "array",
+      "maxItems": 30,
+      "items": { "type": "string", "maxLength": 400 }
+    },
+    "contradictions": {
+      "type": "array",
+      "maxItems": 30,
+      "items": { "type": "string", "maxLength": 400 }
+    },
+    "proposed_title_redacted": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "proposed_body_redacted": {
+      "type": "string",
+      "maxLength": 600
+    },
+    "proposed_scope": {
+      "type": "string",
+      "maxLength": 64
+    },
+    "proposed_kind": {
+      "type": "string",
+      "maxLength": 64
+    },
+    "memory_worthiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["merits_atom", "rationale_redacted", "confidence"],
+      "properties": {
+        "merits_atom": { "type": "boolean" },
+        "rationale_redacted": { "type": "string", "maxLength": 600 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "overall_confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "no_raw_confirmed": {
+      "type": "boolean"
+    },
+    "no_secret_confirmed": {
+      "type": "boolean"
+    },
+    "created_at": {
+      "type": "string"
+    }
+  }
+}

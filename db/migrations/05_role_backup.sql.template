@@ -1,0 +1,60 @@
+-- ============================================================================
+-- ARAC — Phase 1b.7 — 05_role_backup.sql.template
+-- 5e rôle PostgreSQL : __ARAC_ROLE_BACKUP__ (pg_dump --schema=arac uniquement)
+--
+-- ⚠️ TEMPLATE — ce fichier est versionné, sans secret.
+-- Le password est injecté au runtime via scripts/apply_role_backup.sh qui lit
+-- $ARAC_HOME/secrets/roles.txt (mode 0600, jamais versionné).
+--
+-- Placeholder substitué par sed dans apply_role_backup.sh :
+--   __ARAC_BACKUP_PWD__  →  password __ARAC_ROLE_BACKUP__
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- LES NOMS DE RÔLES SONT DES MARQUEURS, PAS DES CONSTANTES.
+--
+-- Un rôle PostgreSQL est GLOBAL AU CLUSTER, pas propre à une base : `arac_app`
+-- du cerveau A **est** `arac_app` du cerveau B. Ce fichier portait ces cinq
+-- noms en dur ; le rejouer à côté d'un cerveau existant réencodait ses cinq
+-- mots de passe, dont les services tombaient au redémarrage suivant — sans
+-- erreur, sans trace, et sans effet visible avant plusieurs jours. C'est
+-- l'incident exact qui a détruit le cerveau de production de l'auteur.
+--
+-- La convention du produit est `arac_<base>_<fonction>` : le bootstrap la
+-- calcule à l'étape 2 et l'applique lui-même (bootstrap/lib/database.sh). Ce
+-- fichier est du DDL de RÉFÉRENCE ; si vous le rejouez à la main, substituez
+-- d'abord les marqueurs, sinon vous écrasez les rôles du voisin.
+--
+--   __ARAC_ROLE_ADMIN__ __ARAC_ROLE_APP__ __ARAC_ROLE_AGENT__
+--   __ARAC_ROLE_READONLY__ __ARAC_ROLE_BACKUP__   les cinq rôles de CE cerveau
+--   __ARAC_DB__                                   le nom de SA base
+-- ----------------------------------------------------------------------------
+
+\set ON_ERROR_STOP on
+
+BEGIN;
+
+-- ----------------------------------------------------------------------------
+-- __ARAC_ROLE_BACKUP__ — pg_dump --schema=arac (cron quotidien systemd timer)
+-- ----------------------------------------------------------------------------
+CREATE ROLE __ARAC_ROLE_BACKUP__ WITH LOGIN PASSWORD '__ARAC_BACKUP_PWD__';
+
+-- Connexion DB
+GRANT CONNECT ON DATABASE __ARAC_DB__ TO __ARAC_ROLE_BACKUP__;
+
+-- Schéma arac : USAGE + SELECT all + USAGE séquences
+GRANT USAGE ON SCHEMA arac TO __ARAC_ROLE_BACKUP__;
+GRANT SELECT ON ALL TABLES IN SCHEMA arac TO __ARAC_ROLE_BACKUP__;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA arac TO __ARAC_ROLE_BACKUP__;
+
+-- Privilèges par défaut sur les futurs objets créés par postgres
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA arac
+    GRANT SELECT ON TABLES TO __ARAC_ROLE_BACKUP__;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA arac
+    GRANT USAGE, SELECT ON SEQUENCES TO __ARAC_ROLE_BACKUP__;
+
+-- Schéma public : USAGE seul (résolution types pgvector/halfvec, pg_trgm, etc.)
+-- Pas de SELECT sur tables public — on ne dump que le schéma arac.
+GRANT USAGE ON SCHEMA public TO __ARAC_ROLE_BACKUP__;
+
+COMMIT;

@@ -1,0 +1,24 @@
+# GABARIT — cf ops/systemd/README.md
+# Le chien de garde : il ne sauvegarde rien, il vérifie que la GARANTIE tient.
+[Unit]
+Description=ARAC — chien de garde de la sauvegarde
+Documentation=file://__ARAC_HOME__/docs/EXPLOITATION.md
+
+[Service]
+Type=oneshot
+User=__ARAC_USER__
+Group=__ARAC_GROUP__
+WorkingDirectory=__ARAC_HOME__
+EnvironmentFile=__ARAC_ENV_FILE__
+Environment=ARAC_HOME=__ARAC_HOME__
+ExecStart=/usr/bin/env bash __ARAC_HOME__/ops/watchdog.sh
+# 1 = dégradé, 2 = critique : ce sont des VERDICTS, pas des plantages. L'unité
+# ne doit pas apparaître « failed » pour avoir bien fait son travail — sinon on
+# ne distingue plus « le chien de garde est cassé » de « il a quelque chose à
+# dire ». L'alerte part par ARAC_ALERT_CMD ; le journal garde le détail.
+SuccessExitStatus=1 2
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=__ARAC_BACKUP_STATE__

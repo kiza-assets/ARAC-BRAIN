@@ -1,0 +1,144 @@
+# ============================================================================
+# arac-pont-sans-mac.service — la synchronisation quand il n'y a pas de Mac
+# ============================================================================
+#
+# GABARIT. Remplacez les marqueurs, déposez dans /etc/systemd/system/ SOUS LE
+# NOM QUI PORTE VOTRE CERVEAU, puis :
+#     sudo systemctl daemon-reload
+#     sudo systemctl enable --now arac-@@CERVEAU@@-pont.timer
+#
+#   @@CERVEAU@@      le nom ASSAINI de votre cerveau — celui de sa base, celui
+#                    que portent déjà ses autres unités (arac-<cerveau>-api…).
+#                    Le lire :  grep '^ARAC_DB=' /etc/arac/<votre-base>/arac.env
+#   @@COMPTE@@       le compte qui possède les conversations à lire
+#   @@FOYER@@        le foyer de ce compte (/home/<compte>)
+#   @@PYTHON@@       chemin absolu de python3 (which python3)
+#   @@CHEMIN_SYNC@@  chemin absolu de mac/arac-sync.py dans votre copie du dépôt
+#   @@PORT_API@@     le port de l'API de CE cerveau (ARAC_API_PORT dans arac.env)
+#
+# ----------------------------------------------------------------------------
+# POURQUOI CE FICHIER NE S'APPELLE PLUS « arac-pont-sans-mac.service »
+# ----------------------------------------------------------------------------
+# Parce qu'un nom d'unité est UNIQUE sur une machine. Ce gabarit portait un nom
+# fixe, sans le cerveau : le `systemctl enable` du second cerveau REMPLAÇAIT
+# purement et simplement l'unité du premier. Un seul pont tournait — le dernier
+# installé — et le minuteur de l'autre restait vert : il déclenchait bien
+# quelque chose, simplement pas ce qu'on croyait. Les conversations du premier
+# cerveau cessaient d'arriver sans qu'une seule erreur ne soit produite.
+#
+# Toutes les autres unités du produit portent déjà `arac-<cerveau>-…` : ce
+# gabarit était le dernier à ne pas suivre la convention.
+#
+# ----------------------------------------------------------------------------
+# À QUOI ÇA SERT
+# ----------------------------------------------------------------------------
+# Le même script que sur un Mac, mais lancé PAR le serveur, POUR le serveur.
+# Deux usages :
+#
+#   1. Vous utilisez Claude Code sur cette machine Linux (en SSH, dans tmux,
+#      peu importe). Ses sessions s'écrivent dans ~/.claude/projects, comme
+#      sur un Mac. Rien à transporter : la source et la destination sont sur
+#      le même disque, le tunnel devient inutile, l'URL reste 127.0.0.1.
+#
+#   2. Vous n'avez pas de Mac du tout. Vous déposez à la main l'export
+#      officiel de claude.ai (conversations.json) dans le dossier prévu, et
+#      ce service l'ingère au passage suivant.
+#
+# Ce que vous perdez sans Mac : la capture automatique de ce que vous dites à
+# Claude Desktop. Elle n'existe de toute façon pas — même sur un Mac, la seule
+# voie stable est l'export manuel. Voir docs/PONT-MAC.md § « Pas de Mac ».
+#
+# Ce que vous ne perdez PAS : absolument tout le reste. Le cerveau ne sait pas
+# d'où viennent ses conversations, il sait de quel POSTE.
+# ============================================================================
+
+[Unit]
+Description=ARAC — synchronisation des conversations locales vers l'API
+# L'API doit être debout : sans elle, chaque passage échouerait bruyamment
+# pour rien. Adaptez le nom à celui qu'a engendré votre bootstrap.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=@@COMPTE@@
+Group=@@COMPTE@@
+
+# Le script lit sa configuration dans ~/.arac/<cerveau>/pont.conf, exactement
+# comme sur un Mac. Un seul endroit pour la vérité, sur les deux systèmes.
+Environment=HOME=@@FOYER@@
+WorkingDirectory=@@FOYER@@
+
+# DE QUEL CERVEAU CE PONT EST-IL LE PONT ?
+#
+# Ces deux lignes manquaient, et c'était le défaut le plus coûteux du fichier.
+# Sans elles, `arac-sync.py` retombait sur son défaut — 127.0.0.1:8000 — et
+# sur ~/.arac/pont.conf, tous deux communs à toute la machine. Sur un serveur
+# portant deux cerveaux, le pont du second déposait les conversations privées
+# de son propriétaire dans la mémoire du PREMIER : jeton valide, poste
+# déclaré, HTTP 200, aucune erreur nulle part. Une fuite qui se présente
+# comme un succès.
+Environment=ARAC_CERVEAU=@@CERVEAU@@
+Environment=ARAC_INGEST_URL=http://127.0.0.1:@@PORT_API@@/v1/ingest/messages
+
+ExecStart=@@PYTHON@@ @@CHEMIN_SYNC@@
+
+# --- Ce que ce service n'a pas le droit de faire ---------------------------
+# Il lit des conversations et parle à la boucle locale. Rien d'autre.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+# ProtectHome=read-only serait tentant, mais le script écrit son état et son
+# journal sous ~/.arac : on ouvre ce seul chemin, en écriture, et pas le foyer.
+ProtectHome=tmpfs
+# Le foyer du pont porte le nom du cerveau : deux ponts sur une machine
+# n'ouvrent pas le même dossier d'état, et surtout pas le même CURSEUR.
+BindPaths=@@FOYER@@/.arac/@@CERVEAU@@
+BindReadOnlyPaths=@@FOYER@@/.claude
+
+# Un passage qui traîne est un passage cassé : on le coupe plutôt que de le
+# laisser tenir la place au suivant.
+TimeoutStartSec=1800
+
+# ----------------------------------------------------------------------------
+# OÙ VA CE QUE CE SERVICE ÉCRIT — et pourquoi ce n'est plus le journal système
+# ----------------------------------------------------------------------------
+#
+# `arac-sync.py` a été écrit pour des YEUX. Sa fonction d'affichage porte la
+# raison en toutes lettres : « Ces conversations contiennent une vie. Vous
+# devez voir ce qui part. » Il imprime donc, avant chaque envoi, le TITRE de
+# chaque conversation, sa date et son volume — puis, en fin de passage, le
+# titre de chacune de celles qui ont échoué.
+#
+# Sur un Mac, devant quelqu'un, c'est exactement ce qu'il faut : un écran se
+# ferme. Sous systemd, la même sortie part dans journald — un magasin PARTAGÉ
+# par la machine entière, lisible par tout compte du groupe « systemd-journal »,
+# conservé des semaines, et que la désinstallation ne sait pas purger unité par
+# unité (`journalctl --vacuum-*` travaille sur des FICHIERS de journal, qui
+# portent aussi ceux des autres services et du voisin). Le §13 peut effacer la
+# base, les rôles, le coffre et les dumps : il ne peut rien contre des titres
+# de conversations déjà avalés par le journal. Personne ne pense à chercher sa
+# mémoire là.
+#
+# Le même texte va donc dans le foyer du pont — `~/.arac/<cerveau>/`, le seul
+# dossier que ce service ouvre en écriture, celui où `arac-sync.py` tient déjà
+# son journal d'événements, celui qui porte le nom du cerveau et lui seul, et
+# celui que le §13 nomme déjà. Il part avec le cerveau, et le voisin n'y est
+# pas. `append:` conserve les passages successifs ; `truncate:` effacerait le
+# dernier rapport à chaque déclenchement, et c'est ce rapport-là qu'on relit
+# quand une synchronisation a mal tourné.
+#
+# LES ERREURS, ELLES, RESTENT DANS LE JOURNAL. Un service qui échoue en silence
+# est un service qu'on ne répare pas : `systemctl status` et les alertes
+# s'appuient sur journald. La sortie d'erreur ne porte qu'une ligne
+# (`arac-sync.py` n'y écrit que « × <exception> »), et cette ligne ne contient
+# ni titre ni message.
+StandardOutput=append:@@FOYER@@/.arac/@@CERVEAU@@/pont-sortie.log
+StandardError=journal
+SyslogIdentifier=arac-@@CERVEAU@@-pont
+
+[Install]
+WantedBy=multi-user.target

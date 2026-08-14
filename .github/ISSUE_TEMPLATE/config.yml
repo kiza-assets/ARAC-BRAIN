@@ -1,0 +1,19 @@
+# Trois gabarits, pas un de plus. Un formulaire long fait fuir les rapports
+# utiles ; un formulaire absent produit des rapports qu'on ne peut pas traiter.
+blank_issues_enabled: true
+
+contact_links:
+  - name: Lire la documentation avant d'ouvrir un ticket
+    url: https://github.com/OWNER/REPO/tree/main/docs
+    about: >-
+      DEPANNAGE.md est classé par symptôme, PREMIER-JOUR.md explique ce qui est
+      normal les 24 premières heures, ROADMAP.md liste ce qui ne marche pas
+      encore. Trois minutes de lecture évitent souvent le ticket — mais si la
+      documentation ne répond pas, ouvrez une QUESTION : c'est un défaut de
+      documentation, et c'est un rapport de première classe.
+  - name: Ce qui n'est pas prévu au programme
+    url: https://github.com/OWNER/REPO/blob/main/docs/ROADMAP.md
+    about: >-
+      Multi-utilisateur, interface web publique, application mobile, Docker,
+      mode gratuit : ce sont des décisions de portée, pas des oublis. La
+      section 6 de la feuille de route dit pourquoi.

@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  ============================================================================
+  com.arac.@@CERVEAU@@.pont.sync — la synchronisation horaire
+  ============================================================================
+
+  GABARIT. Les marqueurs encadrés de doubles arobases sont remplacés par `arac-pont.sh automatiser`.
+
+  CE QUE FAIT CET AGENT
+  ·····················
+  Toutes les heures, il lance `arac-sync.py` : lecture des conversations
+  nouvelles ou allongées depuis le passage précédent, envoi par le tunnel,
+  vérification de l'acquittement du serveur, mise à jour de l'état local.
+  Une passe, puis il rend la main. Aucun processus résident.
+
+  POURQUOI AUCUNE VARIABLE DE CONFIGURATION ICI
+  ·············································
+  Tentation classique : recopier le node_id, l'URL et les chemins dans ce
+  fichier « pour que launchd les voie ». C'est la meilleure façon de les
+  faire diverger de ~/.arac/@@CERVEAU@@/pont.conf, et de passer une soirée à ne pas
+  comprendre pourquoi le pont envoie vers un endroit que vous avez changé
+  ailleurs. Ce fichier ne connaît donc QUE le chemin du script ; toute la
+  configuration reste dans un seul endroit : ~/.arac/@@CERVEAU@@/pont.conf.
+
+  POURQUOI RunAtLoad EST À false
+  ·······························
+  Charger ou recharger cet agent — au démarrage, après une mise à jour, en
+  bricolant — ne doit PAS déclencher un envoi. Ce n'est pas un oubli : un
+  envoi est un événement qui coûte (embeddings, curation) et qui fait
+  quitter à vos conversations cette machine. Il arrive à l'heure prévue, pas
+  parce qu'on a rechargé un fichier.
+
+  Pour lancer une passe tout de suite, à la main :
+      launchctl kickstart -k gui/$(id -u)/com.arac.@@CERVEAU@@.pont.sync
+
+  POURQUOI TOUTES LES HEURES, ET PAS EN CONTINU
+  ··············································
+  Parce que le serveur, lui, ne digère pas en continu : il travaille par
+  cycles (trois par jour par défaut). Envoyer plus souvent que la digestion
+  ne fait rien gagner et multiplie les occasions de casse. L'heure est un
+  compromis : assez fin pour que rien ne traîne, assez large pour que le
+  Mac dorme tranquille.
+
+  VÉRIFIER APRÈS INSTALLATION
+  ···························
+      plutil -lint ~/Library/LaunchAgents/com.arac.@@CERVEAU@@.pont.sync.plist
+      launchctl list | grep com.arac.@@CERVEAU@@.pont
+      tail -f ~/.arac/@@CERVEAU@@/journal/arac-pont.log
+  ============================================================================
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>@@ETIQUETTE@@</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>@@PYTHON@@</string>
+        <string>@@FOYER@@/.arac/@@CERVEAU@@/arac-sync.py</string>
+    </array>
+
+    <!-- une passe par heure -->
+    <key>StartInterval</key>
+    <integer>3600</integer>
+
+    <!-- voir le commentaire ci-dessus : c'est un choix, pas un oubli -->
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>WorkingDirectory</key>
+    <string>@@FOYER@@/.arac/@@CERVEAU@@</string>
+
+    <key>StandardOutPath</key>
+    <string>@@FOYER@@/Library/Logs/arac-pont-@@CERVEAU@@-sync.log</string>
+    <key>StandardErrorPath</key>
+    <string>@@FOYER@@/Library/Logs/arac-pont-@@CERVEAU@@-sync.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <!--
+          Sous launchd, l'environnement est minimal : ni le PATH de votre
+          shell, ni ce que votre .zshrc exporte. On pose donc un PATH
+          explicite. Piège récurrent : un python3 installé par pyenv ou
+          Homebrew se résout depuis un terminal et pas depuis launchd — d'où
+          le chemin ABSOLU dans ProgramArguments plus haut.
+        -->
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <!--
+          Certificats TLS : utile seulement si vous envoyez en https://
+          au lieu de passer par le tunnel. Un python3 hors système peut ne
+          pas trouver le magasin du système sous launchd. Si ce fichier
+          n'existe pas, arac-sync.py retombe sur certifi puis sur le défaut :
+          la ligne est inoffensive dans tous les cas.
+        -->
+        <key>SSL_CERT_FILE</key>
+        <string>/etc/ssl/cert.pem</string>
+    </dict>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>LowPriorityIO</key>
+    <true/>
+    <key>Nice</key>
+    <integer>5</integer>
+</dict>
+</plist>

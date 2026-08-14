@@ -1,0 +1,23 @@
+# GABARIT — cf ops/systemd/README.md
+# Le bulletin de santé + les alarmes. Deux commandes, une unité : elles se
+# lisent ensemble et n'ont d'intérêt qu'ensemble.
+[Unit]
+Description=ARAC — bulletin de santé et alarmes du cerveau
+Documentation=file://__ARAC_HOME__/docs/EXPLOITATION.md
+
+[Service]
+Type=oneshot
+User=__ARAC_USER__
+Group=__ARAC_GROUP__
+WorkingDirectory=__ARAC_HOME__
+EnvironmentFile=__ARAC_ENV_FILE__
+Environment=ARAC_HOME=__ARAC_HOME__
+ExecStart=__ARAC_HOME__/.venv/bin/python __ARAC_HOME__/scripts/ops/health_check.py
+ExecStart=__ARAC_HOME__/.venv/bin/python __ARAC_HOME__/scripts/ops/alerts.py
+# 1 WARNING, 2 CRITICAL, 3 UNKNOWN : des verdicts, pas des plantages.
+SuccessExitStatus=1 2 3
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=__ARAC_VAR_DIR__

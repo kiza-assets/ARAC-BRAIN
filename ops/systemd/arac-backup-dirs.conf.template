@@ -1,0 +1,19 @@
+# GABARIT tmpfiles.d — à copier dans /etc/tmpfiles.d/<prefixe-de-ce-cerveau>-backup.conf
+#
+# LE NOM DE DESTINATION PORTE CELUI DE CE CERVEAU. Cette ligne disait
+# « /etc/tmpfiles.d/arac-backup.conf » : un nom COMMUN à la machine, que deux
+# cerveaux s'écraseraient l'un l'autre — et le survivant recréerait les
+# répertoires de sauvegarde du perdant sous le mauvais propriétaire. C'est
+# `ops/systemd/render.sh` qui écrit le vrai nom, à la fin de son rendu.
+#
+# Crée (et RECRÉE au démarrage) les répertoires de sauvegarde avec les bons
+# droits. Le mode 0700 n'est pas décoratif : un dump contient l'intégralité du
+# cerveau, en clair — chaque atome, chaque conversation, chaque secret qui y
+# serait passé. Quiconque lit ce répertoire vous a lu.
+#
+# Appliquer sans redémarrer :  sudo systemd-tmpfiles --create
+#
+#Type Chemin                     Mode Propriétaire  Groupe        Âge
+d     __ARAC_BACKUP_DIR__        0700 __ARAC_USER__ __ARAC_GROUP__ -
+d     __ARAC_BACKUP_STATE__      0700 __ARAC_USER__ __ARAC_GROUP__ -
+d     __ARAC_BACKUP_STATE__/receipts 0700 __ARAC_USER__ __ARAC_GROUP__ -

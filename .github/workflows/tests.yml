@@ -1,0 +1,148 @@
+# ============================================================================
+# INTÉGRATION CONTINUE — le strict nécessaire, et rien d'autre
+#
+# Trois contrôles, choisis pour une raison précise :
+#
+#   suite    la suite de tests, jouée sur un dépôt CLONÉ NU. C'est le seul
+#            gate qui compte : il vérifie qu'un inconnu peut cloner et tester
+#            sans rien installer d'autre que Python.
+#   hygiene  aucun fichier personnel versionné, aucun chemin de machine.
+#            C'est l'assertion F1 de GOAL.md, rendue mécanique.
+#   style    ruff, en INFORMATIF (voir la note du job) — pas un gate.
+#
+# Rien ici n'ouvre de base, n'appelle un service payant, ni ne dépose de
+# secret : la suite est hermétique par conception, et une CI qui aurait
+# besoin d'une clé d'API serait une CI qu'on ne peut pas exécuter en local.
+#
+# ⚠ NON OBSERVÉ : ce fichier n'a jamais été exécuté par un exécuteur GitHub.
+# Les commandes qu'il enchaîne, elles, ont été jouées à la main sur une copie
+# du dépôt privée de ses fichiers engendrés — 1287 passed, 221 skipped,
+# 5 xfailed. Si le premier passage échoue, c'est ici qu'il faut regarder.
+# ============================================================================
+
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  suite:
+    name: suite hermétique
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: dépendances
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # La taxonomie N'EST PAS versionnée : elle appartient à l'utilisateur.
+      # Un dépôt fraîchement cloné n'a donc ni `config/scopes.toml` ni
+      # `app/schemas/scope_generated.py`. La CI part de l'exemple commenté —
+      # exactement ce que fait un nouvel utilisateur avant l'entretien.
+      - name: taxonomie d'exemple
+        run: |
+          cp config/scopes.example.toml config/scopes.toml
+          python bootstrap/generate_scopes.py
+
+      - name: tests
+        run: python -m pytest tests/ -q
+
+      # `make doctor` ne se connecte à rien : il vérifie que les pièces sont
+      # là (racine, identité, taxonomie, constitution). Une régression ici
+      # veut dire que le dépôt ne peut plus devenir un cerveau.
+      - name: doctor
+        # ARAC_NODE_ID court-circuite la lecture de `config/brain.toml`, qui
+        # n'existe pas sans entretien — et l'entretien est interactif.
+        env:
+          ARAC_NODE_ID: ci-runner
+        run: make doctor PY=python
+
+  hygiene:
+    name: hygiène du dépôt (F1)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      # Ces fichiers décrivent UNE personne : son identité, sa taxonomie, ses
+      # secrets. Ils sont engendrés à l'installation et ignorés par git. S'ils
+      # apparaissent dans le dépôt, quelqu'un a publié son cerveau.
+      - name: aucun fichier personnel versionné
+        run: |
+          interdits='^(\.env$|\.env\.(?!example)|config/brain\.toml$|config/scopes\.toml$|app/schemas/scope_generated\.py$|db/seeds/scopes\.sql$)'
+          trouve=$(git ls-files | grep -P "$interdits" || true)
+          if [ -n "$trouve" ]; then
+            echo "Ces fichiers ne doivent jamais être versionnés :"
+            echo "$trouve"
+            echo ""
+            echo "Ils appartiennent à l'installation, pas au framework."
+            echo "Un .env commité est une fuite définitive : l'historique le"
+            echo "garde même après suppression, et toutes les clés sont à révoquer."
+            exit 1
+          fi
+          echo "aucun fichier personnel versionné."
+
+      # Un chemin de machine dans un fichier livré, c'est le dépôt qui se
+      # souvient de l'ordinateur sur lequel il a été écrit. Tout chemin est
+      # paramétré : ARAC_HOME, ARAC_DB, ARAC_NODE_ID, ARAC_BACKUP_DIR…
+      - name: aucun chemin de machine personnelle
+        run: |
+          trouve=$(git grep -nE '/Users/[A-Za-z0-9._-]+' -- . || true)
+          if [ -n "$trouve" ]; then
+            echo "Chemin de machine personnelle détecté :"
+            echo "$trouve"
+            echo ""
+            echo "Paramétrez-le (ARAC_HOME, ARAC_DB…) ou remplacez-le par"
+            echo "\$HOME / un exemple générique."
+            exit 1
+          fi
+          echo "aucun chemin de machine."
+
+      # 20 scripts shell portent l'installation. Une faute de syntaxe s'y
+      # découvre normalement à trois heures du matin, sur un serveur nu.
+      - name: syntaxe des scripts shell
+        run: |
+          echec=0
+          while IFS= read -r f; do
+            bash -n "$f" || { echo "syntaxe invalide : $f"; echec=1; }
+          done < <(git ls-files '*.sh')
+          exit "$echec"
+
+  style:
+    name: style (informatif)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # NON BLOQUANT, et c'est délibéré. Le moteur a été extrait d'une
+    # installation existante : ruff y relève aujourd'hui environ 350
+    # signalements (surtout de l'ordre des imports). Rendre ce job bloquant
+    # peindrait la CI en rouge dès le premier jour — et une CI rouge en
+    # permanence n'est plus une CI, c'est un décor qu'on apprend à ignorer.
+    #
+    # À rendre bloquant le jour où le compte tombe à zéro. Ce jour-là,
+    # retirez cette ligne — pas avant, pas après.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - run: ruff check . --output-format=concise --statistics

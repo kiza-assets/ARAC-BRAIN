@@ -1,0 +1,13 @@
+[Unit]
+Description=ARAC — déclenche le bulletin de santé et les alarmes
+
+[Timer]
+# Toutes les six heures. Les seuils des alarmes sont en dizaines d'heures :
+# vérifier plus souvent ne détecterait rien de plus tôt, et remplirait le
+# journal. Quatre passages par jour suffisent à ce que l'historique du journal
+# raconte quelque chose.
+OnBootSec=20min
+OnUnitActiveSec=6h
+
+[Install]
+WantedBy=timers.target

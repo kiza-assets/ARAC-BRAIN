@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arac.local/schemas/atom_council/session_receipt.schema.json",
+  "title": "Atom Council — session_receipt (V2.1)",
+  "description": "Recu de session metadata-only emis par le runner de session a la fin d'une deliberation (Round 6). L'aggregator, fonction mecanique interne du runner, prepare le dossier presidentiel et n'emet pas le receipt. Aucun contenu de candidate, aucun transcript, aucun secret.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "session_id",
+    "candidate_id",
+    "final_decision",
+    "created_at",
+    "review_count",
+    "peer_score_count",
+    "quorum_met",
+    "veto_detected",
+    "human_gate_required",
+    "next_action",
+    "no_raw_confirmed",
+    "no_secret_confirmed"
+  ],
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]+$",
+      "maxLength": 128
+    },
+    "candidate_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]+$",
+      "maxLength": 128
+    },
+    "final_decision": {
+      "type": "string",
+      "enum": [
+        "APPROVE",
+        "REJECT",
+        "REVISE",
+        "NEEDS_MORE_CONTEXT",
+        "NEEDS_HUMAN_DECISION",
+        "NEEDS_EXTERNAL_MODEL",
+        "DEFER"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "review_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 25
+    },
+    "peer_score_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 25
+    },
+    "quorum_met": {
+      "type": "boolean"
+    },
+    "veto_detected": {
+      "type": "boolean"
+    },
+    "human_gate_required": {
+      "type": "boolean"
+    },
+    "next_action": {
+      "type": "string",
+      "enum": [
+        "create_atom_pack_for_human",
+        "discard_with_receipt",
+        "request_revision",
+        "request_more_context",
+        "escalate_to_human",
+        "escalate_to_external_model",
+        "defer_to_backlog"
+      ]
+    },
+    "no_raw_confirmed": {
+      "type": "boolean"
+    },
+    "no_secret_confirmed": {
+      "type": "boolean"
+    }
+  }
+}

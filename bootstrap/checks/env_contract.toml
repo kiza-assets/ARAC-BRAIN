@@ -1,0 +1,432 @@
+# =============================================================================
+# LE CONTRAT DES VARIABLES — ce que le code lit et que `.env.example` ne montre
+# pas, avec le motif de chaque classement.
+# =============================================================================
+#
+# POURQUOI CE FICHIER EXISTE
+# --------------------------
+# Le code de ce dépôt lit environ deux cents variables d'environnement.
+# `.env.example` n'en montre qu'une quarantaine, et c'est un choix : un
+# fichier canonique de deux cents entrées ne s'installe pas, il se subit.
+# Personne ne lit une page de réglages dont 80 % ne le concernent pas — et
+# c'est précisément comme ça qu'on rate la ligne qui, elle, comptait.
+#
+# Mais « on ne montre pas tout » doit être ÉCRIT, sinon c'est indistinguable
+# d'un oubli. C'est le rôle de ce fichier : chaque variable lue par le code
+# est soit dans `.env.example`, soit ici, dans un groupe qui dit POURQUOI elle
+# n'a pas à figurer dans le fichier canonique.
+#
+# `bootstrap/checks/audit_env.py` échoue si une variable n'est ni documentée
+# ni classée. Ajouter une variable au code oblige donc à trancher : est-ce que
+# l'installateur doit la connaître ? Si oui, `.env.example`. Sinon, ici, avec
+# le motif. Il n'y a pas de troisième réponse, et c'est le point.
+#
+# CE FICHIER N'EST PAS UNE DOCUMENTATION
+# --------------------------------------
+# Il ne dit pas ce que fait chaque variable ni quel est son défaut — le code
+# est la source de vérité pour ça, et `docs/CONFIGURATION.md` en donne la
+# lecture. Il dit une seule chose : « celle-ci, on a décidé de ne pas la
+# mettre en première page, et voici pourquoi ». C'est un registre de
+# décisions, pas un manuel.
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+# Les familles à préfixe
+# -----------------------------------------------------------------------------
+#
+# Certaines variables n'ont pas de nom fixe : le code balaie l'environnement à
+# la recherche d'un préfixe. `app/auth.py` construit sa table
+# « jeton → poste » à partir de tout ce qui commence par `ARAC_NODE_TOKEN_`.
+# Aucun nom complet n'existe donc dans le code, et c'est correct.
+
+[familles]
+prefixes = ["ARAC_NODE_TOKEN_"]
+
+
+# -----------------------------------------------------------------------------
+
+[[groupe]]
+raison = """
+Consommée par un programme TIERS, pas par ce dépôt. La curation lance le
+binaire `claude` en sous-processus ; c'est lui qui s'authentifie. La variable
+est donc documentée dans `.env.example` — l'installateur doit la poser — mais
+aucun fichier source d'ici ne la lit, et le contrôle ne peut pas le deviner.
+"""
+variables = ["ANTHROPIC_API_KEY"]
+
+
+[[groupe]]
+raison = """
+Déduites par l'installation, jamais posées à la main. Le nom de la base, le
+dossier des secrets, le préfixe des unités systemd, les chemins de travail :
+tout descend de `config/brain.toml`. Les surcharger est possible — pour faire
+cohabiter deux cerveaux sur une machine, ou déplacer un dossier — mais c'est
+un geste d'exception qui appartient à `docs/CONFIGURATION.md`, pas au fichier
+qu'on recopie le premier jour.
+"""
+variables = [
+  "ARAC_DB", "ARAC_ETC", "ARAC_ENV_FILE", "ARAC_SECRETS_ROLES",
+  "ARAC_SECRETS_COCKPIT", "ARAC_SCHEMA", "ARAC_ROLE_PREFIX", "ARAC_DB_HOTE",
+  "ARAC_DB_PORT", "ARAC_SERVICE_USER", "ARAC_SERVICE_GROUP", "ARAC_AGENT_USER",
+  "ARAC_AGENT_HOME", "ARAC_VENV", "ARAC_LOG_DIR", "ARAC_UNITS_DIR",
+  "ARAC_UNITE_PREFIXE", "ARAC_UNIT_PREFIX", "ARAC_API_APP", "ARAC_COCKPIT_APP", "ARAC_CYCLE_MODULE",
+  "ARAC_CYCLES", "ARAC_CYCLE_TZ", "ARAC_API_PORT", "ARAC_COCKPIT_PORT",
+  "ARAC_PG_SUPERUSER", "ARAC_BACKUP_RETENTION", "ARAC_ETAT",
+  "ARAC_VERSION_BOOTSTRAP", "ARAC_OPS_DIR", "ARAC_ALEMBIC", "ARAC_PYTHON",
+  "ARAC_MISSIONS_DIR", "ARAC_BRAIN_CONFIG", "ARAC_BRAIN_NAME",
+  "ARAC_BRAIN_OWNER", "ARAC_INSTALL_UUID", "ARAC_BRAIN_RUNTIME_DIR", "ARAC_LOCK_ROOT",
+  "ARAC_CONSTITUTION_FILE", "ARAC_PROJECTS_CONFIG", "ARAC_PROPOSAL_DIR",
+  "ARAC_REPO_CWD", "ARAC_MODE_DEGRADE",
+]
+
+
+[[groupe]]
+raison = """
+Le vocabulaire du BOOTSTRAP. Ces noms-là sont écrits par l'installation dans
+`/etc/arac/<base>/arac.env`, jamais par vous. Le moteur, lui, lit les noms
+historiques documentés dans `.env.example` (`DATABASE_URL_APP`,
+`CC_SESSION_SECRET`, `OPENAI_API_KEY`…). Les deux vocabulaires coexistent et
+ne se rencontrent pas encore : `docs/CONFIGURATION.md` en donne la table, et
+`docs/DEPANNAGE.md` le correctif. Les documenter ici en double ferait croire
+qu'il faut poser les deux — ce qui est faux, et ce qui doublerait les secrets
+en clair sur le disque.
+"""
+variables = [
+  "ARAC_API_BEARER_TOKEN", "ARAC_DB_URL_ADMIN", "ARAC_DB_URL_APP",
+  "ARAC_DB_URL_AGENT", "ARAC_DB_URL_READONLY", "ARAC_CC_SESSION_SECRET",
+  "ARAC_CC_ADMIN_PASSWORD_HASH", "ARAC_CC_TOTP_SECRET",
+  "ARAC_EMBEDDINGS_API_KEY", "ARAC_CURATION_API_KEY",
+]
+
+
+[[groupe]]
+raison = """
+Posées sur le POSTE, pas sur le serveur. Le pont Mac (`mac/`) est une autre
+installation, avec son propre fichier de réglages et sa propre documentation
+(`docs/PONT-MAC.md`). Les faire figurer dans le `.env` du serveur ferait
+croire qu'elles y ont un effet ; elles n'en ont aucun.
+"""
+variables = [
+  "ARAC_CERVEAU",
+  "ARAC_CLAUDE_CODE_DIR", "ARAC_DESKTOP_EXPORT", "ARAC_DIR", "ARAC_INGEST_URL",
+  "ARAC_LOG_FILE", "ARAC_MAX_CONVERSATIONS", "ARAC_PORT_API",
+  "ARAC_PORT_COCKPIT", "ARAC_SANS_COULEUR", "ARAC_SERVEUR_SSH",
+  "ARAC_STATE_FILE", "ARAC_TOKEN_FILE",
+]
+
+
+[[groupe]]
+raison = """
+NI POSÉE NI DOCUMENTABLE : UNE MÉMOIRE INTERNE AU PONT, D'UNE LIGNE À L'AUTRE.
+
+`ARAC_CERVEAU_DEMANDE` n'est pas un réglage — c'est ce que l'appelant a DEMANDÉ,
+gardé à part de ce que le script a DÉDUIT. `resoudre_cerveau` écrase
+`ARAC_CERVEAU` par « l'unique cerveau connu » quand il n'y en a qu'un ; or
+`installer` sert justement à en ajouter un SECOND, et proposerait alors le nom
+du premier comme valeur par défaut — c'est-à-dire réinstallerait par-dessus lui.
+Le script relève donc la demande explicite avant toute résolution, et ne propose
+un défaut que s'il y en avait une.
+
+La poser à la main n'a aucun sens : elle est écrite à la ligne 58 de
+`mac/arac-pont.sh`, à partir de `ARAC_CERVEAU`, avant que quoi que ce soit ne
+la lise. La documenter dans `.env.example` ferait croire qu'il existe deux
+façons de nommer son cerveau ; il n'y en a qu'une, `ARAC_CERVEAU`, et elle est
+déjà classée au-dessus.
+
+CE QUE SON ABSENCE A COÛTÉ, ET POURQUOI CE GROUPE EXISTE PLUTÔT QU'UNE LIGNE
+AJOUTÉE AU GROUPE VOISIN : elle a été introduite par le correctif du
+cloisonnement du pont, et rangée nulle part. `audit_env.py` — contrôle 0 de
+`bootstrap/checks/verify_install.sh`, joué par le bootstrap à son étape 10 ET
+par la SIMULATION avant toute écriture — l'a déclarée NON CLASSÉE et a rendu 1.
+Quatre rouges dans `make test`, `bootstrap.sh --dry-run` en code 1 à l'étape 3
+du démarrage rapide, et « Ce cerveau n'est pas sain » sur une installation
+pourtant réussie. Le produit avait avancé ; sa déclaration était restée en
+arrière. C'est cette famille-là que ce groupe nomme, pour que la suivante se
+range ici sans hésiter.
+"""
+variables = ["ARAC_CERVEAU_DEMANDE"]
+
+
+[[groupe]]
+raison = """
+Confort d'affichage des scripts, sans effet sur le cerveau. Elles existent
+pour que la sortie reste lisible dans un journal ou une capture d'écran.
+"""
+variables = ["ARAC_UI_COULEUR", "ARAC_SANS_BANNIERE"]
+
+
+[[groupe]]
+raison = """
+Un panneau du COCKPIT qui ne suppose aucune convention. La timeline peut
+suivre vos branches de version, mais le cockpit ne devine pas comment vous les
+nommez : sans cette variable, il affiche les tags et dit, en toutes lettres,
+qu'aucune convention n'est déclarée. C'est un réglage d'affichage facultatif,
+sans effet sur le cerveau ni sur l'installation — le mettre dans le fichier
+qu'on recopie le premier jour ferait croire qu'il faut choisir une convention
+avant d'avoir un cerveau.
+"""
+variables = ["ARAC_COCKPIT_RELEASE_BRANCHES"]
+
+
+[[groupe]]
+raison = """
+Une TROISIÈME façon de nommer l'adresse de l'API, propre à l'audit de
+conservation. `.env.example` documente les deux qui comptent — `ARAC_API_URL`
+(les agents) et `ARAC_API_BASE` (le cockpit). En ajouter une troisième au
+fichier canonique donnerait à croire qu'il faut choisir ; il faut seulement
+savoir qu'elle existe si un jour l'audit vise le mauvais port. Le jour où les
+trois seront unifiées, cette ligne disparaîtra.
+"""
+variables = ["ARAC_API_BASE_URL"]
+
+
+[[groupe]]
+raison = """
+Réglages de l'exploitation : sauvegarde, copie hors site, restauration
+d'épreuve, chien de garde. Ils vivent avec les scripts qui les lisent
+(`ops/`), qui les documentent en tête de fichier et qui ont tous un défaut
+prudent. `.env.example` ne retient de tout cela que `ARAC_ALERT_CMD` — la
+seule dont l'absence a une conséquence qu'aucun défaut ne peut rattraper :
+personne n'est réveillé.
+"""
+variables = [
+  "ARAC_BACKUP_CLEAR_LOCAL", "ARAC_BACKUP_DSN", "ARAC_BACKUP_IDENTITY",
+  "ARAC_BACKUP_KEEP_MIN", "ARAC_BACKUP_MIN_BYTES",
+  "ARAC_BACKUP_MIN_PCT_OF_MEDIAN", "ARAC_BACKUP_PREFIX",
+  "ARAC_BACKUP_RECIPIENTS", "ARAC_BACKUP_RECIPIENTS_SHA",
+  "ARAC_BACKUP_RECIPIENTS_ATTENDU",
+  "ARAC_BACKUP_REQUIRED_TABLES", "ARAC_BACKUP_RETENTION_DAYS",
+  "ARAC_BACKUP_STATE", "ARAC_DB_SCHEMA", "ARAC_MAINTENANCE_DB",
+  "ARAC_MAINTENANCE_DSN", "ARAC_READONLY_DSN", "ARAC_OFFSITE_ALLOW_CLEAR",
+  "ARAC_OFFSITE_DEST", "ARAC_OFFSITE_DIR", "ARAC_OFFSITE_PORT",
+  "ARAC_OFFSITE_SSH_KEY", "ARAC_RESTORE_DB", "ARAC_RESTORE_FORCE",
+  "ARAC_RESTORE_FRESHNESS_H", "ARAC_RESTORE_TEMPLATE_DB",
+  "ARAC_WD_DISK_CRIT_PCT", "ARAC_WD_DISK_WARN_PCT", "ARAC_WD_DUMP_CRIT_H",
+  "ARAC_WD_DUMP_WARN_H", "ARAC_WD_OFFSITE_CRIT_H", "ARAC_WD_OFFSITE_WARN_H",
+  "ARAC_WD_PULSE_H", "ARAC_WD_VERIFY_CRIT_H", "ARAC_WD_VERIFY_WARN_H",
+  "ARAC_ALERT_GROWTH_FACTOR", "ARAC_ALERT_GROWTH_FLOOR",
+  "ARAC_ALERT_GROWTH_SAMPLES", "ARAC_ALERT_INGEST_SILENCE_HOURS",
+  "ARAC_ALERT_STALL_HOURS", "ARAC_ALERT_STATE", "ARAC_ALERT_STREAK_HISTORY",
+  "ARAC_ALERT_STREAK_MIN", "ARAC_ALERT_STREAK_P",
+]
+
+
+[[groupe]]
+raison = """
+Seuils de la PERCEPTION : à partir de quand le cerveau considère qu'il a
+faim, qu'une source est en retard, qu'une file d'attente vieillit. Ce sont
+des heures et des multiplicateurs, calibrés sur huit mois d'observation. Les
+changer sans avoir d'abord regardé le cockpit ne fait que déplacer le bruit :
+on rend un signal muet, on croit avoir corrigé la cause. Ils appartiennent au
+réglage fin, pas à l'installation.
+"""
+variables = [
+  "ARAC_ACTIONABLE_AGE_WARN_H", "ARAC_CURATION_FAMINE_CRIT_H",
+  "ARAC_CURATION_FAMINE_WARN_H", "ARAC_EXCLUSION_DRIFT_WARN_AGE_H",
+  "ARAC_FAILED_AGE_CRIT_H", "ARAC_INGEST_ACK_FAILED_IDS",
+  "ARAC_INGEST_WATCHDOG_STATE", "ARAC_MAC_PROBE_HOST", "ARAC_MAC_PROBE_PORT",
+  "ARAC_QUOTA_REPEAT_MIN_COUNT", "ARAC_QUOTA_REPEAT_WINDOW_H",
+  "ARAC_RECONCILE_AUDIT_WINDOW_HOURS", "ARAC_RECONCILE_DEADMAN_WARN_H",
+  "ARAC_RECONCILE_HEARTBEAT", "ARAC_REPAGE_SLOW_INTERVAL_S",
+  "ARAC_REVIEW_QUEUE_WARN_AGE_H", "ARAC_SOURCE_LAG_BOOTSTRAP_MSG_MULT",
+  "ARAC_SOURCE_LAG_CRIT_MULT", "ARAC_SOURCE_LAG_WARN_MULT",
+  "ARAC_TELEGRAM_RETRY_BASE_S", "ARAC_TELEGRAM_SAFE_CHARS",
+  "ARAC_TELEGRAM_SEND_ATTEMPTS", "ARAC_WATCHDOG_EXCLUSION_DRIFT_WARN",
+  "ARAC_WATCHDOG_QUIET_END", "ARAC_WATCHDOG_QUIET_START",
+  "ARAC_CONSERVATION_BURNED_SLOT_RECENT_HOURS",
+  "ARAC_CONSERVATION_CAPTURE_FRESHNESS_HOURS",
+  "ARAC_CONSERVATION_COVERAGE_OMITTED_MIN",
+  "ARAC_CONSERVATION_RECEIPT_SAMPLE_LIMIT",
+  "ARAC_CONSERVATION_RECEIPT_SAMPLE_WINDOW_HOURS",
+  "ARAC_CONSERVATION_RUN_WINDOW_DAYS",
+  "ARAC_CONSERVATION_STARVATION_GRACE_HOURS",
+  "ARAC_CONSERVATION_STARVATION_HOURS",
+  "ARAC_CONSERVATION_STARVATION_REPAGE_H", "ARAC_CONSERVATION_STATE",
+  "ARAC_DRAIN_PROGRESS_KT_MIN", "ARAC_STARVATION_DRAIN_AWARE",
+]
+
+
+[[groupe]]
+raison = """
+Le réglage fin de la DIGESTION : comment la tranche servie au modèle est
+composée, ce que le contrat exige d'une réponse, ce qui décide qu'un cycle
+valait sa dépense. `.env.example` en documente les deux qui décident du coût
+(`ARAC_PACK_TOKEN_BUDGET`, `ARAC_PACK_MAX_CONVS`) et le modèle employé. Le
+reste se règle après avoir lu trois cycles réels dans le cockpit — pas avant,
+parce qu'aucune de ces valeurs ne veut dire quoi que ce soit sur un cerveau
+vide.
+"""
+variables = [
+  "ARAC_PACK_FAIR_WINDOW", "ARAC_PACK_FILL_FLOOR", "ARAC_PACK_RECENCY_MAX_MSGS",
+  "ARAC_PACK_RECENCY_MAX_TOKENS", "ARAC_PACK_RECENCY_SLOTS",
+  "ARAC_PACK_RECENCY_SOURCES", "ARAC_PACK_STRICT_BOUNDARIES",
+  "ARAC_CORTEX_DEDUP_UID_STRICT", "ARAC_CORTEX_EMPTY_DROP_TOLERANT",
+  "ARAC_CORTEX_FORCE_MANUAL", "ARAC_CORTEX_RUNREF_LENIENT",
+  "ARAC_CORTEX_UID_NEARMATCH", "ARAC_VALUE_GATE_ENGAGED_CURSOR_MIN",
+  "ARAC_VALUE_GATE_OPERATOR_NODES", "ARAC_VALUE_GATE_UNCURED_KTOK_MIN",
+  "ARAC_CURATOR_AGE_CAP_HOURS", "ARAC_CURATOR_GATE_MODE",
+  "ARAC_CURATOR_MIN_NEW_MSGS", "ARAC_CURATOR_RETRY_BACKOFF_MAX_STEPS",
+  "ARAC_CURATOR_RETRY_BACKOFF_STEP_MIN", "ARAC_CURATOR_TIMEOUT_SEC",
+  "ARAC_TIMEOUT", "ARAC_SCOPE_AGENT_MESSAGE", "ARAC_TOKEN_PRICE_PER_1K",
+]
+
+
+[[groupe]]
+raison = """
+Drapeaux d'EXPÉRIMENTATION, tous à l'arrêt par défaut. Ils servent à faire
+tourner un mécanisme en double, sans effet visible, pour comparer ce qu'il
+aurait produit. Les documenter en première page inviterait à les armer ; or
+un cerveau dont on ne sait plus quel chemin de code a produit un souvenir
+n'est plus auditable, et c'est irréversible pour les souvenirs déjà écrits.
+"""
+variables = [
+  "ARAC_SHADOW_CE_ENABLED", "ARAC_SHADOW_CE_V2_ENABLED",
+  "ARAC_SHADOW_CE_CONSUMER_DEFAULT", "ARAC_CE_SERVE_CANARI",
+  "ARAC_CE_SERVE_CORTEX_DEDUP", "ARAC_PROJECT_ROUTER_ENABLED",
+]
+
+
+[[groupe]]
+raison = """
+Politique de mémoire : quels domaines sont sensibles, lesquels sont
+transverses, où vivent les fichiers de règles. Ces valeurs découlent de VOTRE
+taxonomie (`config/scopes.toml`) et se déclarent là-bas, dans un fichier fait
+pour ça. Les redoubler en variables d'environnement créerait deux sources de
+vérité pour la même question — et c'est comme ça qu'un savoir sensible finit
+dans un domaine qui ne l'est pas.
+"""
+variables = [
+  "ARAC_BUSINESS_ROOTS", "ARAC_SCOPE_SUGGESTIONS_CONFIG",
+  "ARAC_SENSITIVE_SAFE_ROOTS", "ARAC_SENSITIVE_SCOPES",
+  "ARAC_SENSITIVITY_CONFIG", "ARAC_TRANSVERSE_SCOPES",
+]
+
+
+[[groupe]]
+raison = """
+Agents que le bootstrap N'INSTALLE PAS. L'auditeur, le développeur, le
+moniteur, le pont Telegram et l'écouteur du cockpit ne font pas partie des
+quatre unités posées par l'installation ; ils se lancent à la main, et leurs
+réglages se lisent en tête des fichiers concernés. Les documenter dans le
+fichier canonique promettrait des services qui ne tournent pas.
+"""
+variables = [
+  "ARAC_AUDITOR_LLM_ENABLED", "ARAC_AUDITOR_LLM_FAIL_MODE",
+  "ARAC_AUDITOR_LLM_FALLBACK_MODEL", "ARAC_AUDITOR_LLM_MODEL",
+  "ARAC_AUDITOR_LLM_TIMEOUT_SEC", "ARAC_DEVELOPER_ALLOWED_PATHS",
+  "ARAC_DEVELOPER_PUSH_ENABLED", "ARAC_MCP_CONFIG", "ARAC_MCP_SERVER_NAME",
+  "ARAC_MONITOR_INTERVAL_SEC", "ARAC_MONITOR_RESTART_THRESHOLD",
+  "ARAC_MONITOR_RESTART_WINDOW_SEC", "ARAC_HEARTBEAT_SEC",
+  "ARAC_HEARTBEAT_TIMEOUT_SEC", "ARAC_USAGE_LIMIT_MAX_LEN",
+  "ARAC_CC_LISTENER_AUTOSTART", "TELEGRAM_POLL_INTERVAL_SEC",
+  "TELEGRAM_POLL_TIMEOUT_SEC",
+]
+
+
+[[groupe]]
+raison = """
+`DATABASE_URL` sans suffixe : le nom qu'attend Alembic le temps d'une
+migration, et le repli du rapport de santé quand le DSN de lecture seule est
+absent. Il n'a pas de rôle propre — le poser en permanence reviendrait à
+donner un cinquième pouvoir mal défini à côté des quatre rôles nommés, ce que
+tout le §1 de `.env.example` cherche à éviter. On le passe pour une commande,
+on ne l'installe pas.
+"""
+variables = ["DATABASE_URL"]
+
+
+[[groupe]]
+raison = """
+POSÉES PAR L'UNITÉ, JAMAIS PAR L'INSTALLATEUR.
+
+Le cockpit est le seul service qui doive savoir DE QUEL CERVEAU il est le
+cockpit : il interroge l'API de ce cerveau-là et rapporte la santé de l'unité
+de ce cerveau-là. Il l'ignorait — son collecteur d'API retombait sur le port
+par défaut, et son collecteur de métriques demandait l'état de l'unité au nom
+générique, c'est-à-dire, sur une machine à deux cerveaux, ceux du VOISIN. Une
+page de cockpit affichait alors la taxonomie et la santé d'un autre, sans une
+seule erreur.
+
+`bootstrap/lib/services.sh` écrit ces deux noms dans l'unité du cockpit, d'où
+ils sortent déjà calculés. Les mettre dans le fichier canonique ferait croire
+qu'il faut les choisir : ils se DÉDUISENT du nom du cerveau, et une valeur
+recopiée à la main y serait précisément le défaut qu'on vient de fermer.
+"""
+variables = ["ARAC_UNIT_API", "ARAC_UNIT_COCKPIT"]
+
+
+[[groupe]]
+raison = """
+DES ÉCHAPPATOIRES NOMMÉES, POUR UNE INSTALLATION QUI SORT DE LA CONVENTION.
+
+Aucune des deux n'a besoin d'être posée : chacune a une valeur DÉRIVÉE du
+cerveau, et c'est cette dérivation qui est la correction. Elles existent pour
+qu'une installation qui a nommé ses objets autrement puisse le dire, au lieu
+d'être obligée de retomber sur un nom commun.
+
+`ARAC_UNIT_CURATEUR` — l'unité de digestion dont le cockpit rapporte l'état.
+Le collecteur nommait `arac-curator-batch.service` en toutes lettres : une
+unité qu'aucun bootstrap ne pose, et qui, sur une machine à deux cerveaux,
+désignait celle du voisin. Elle se déduit désormais de `ARAC_UNIT_PREFIX` ;
+sans préfixe, le cockpit rend « inconnu » avec sa raison, jamais un état.
+
+`ARAC_COMPTE_PONT` — le compte Unix du tunnel SSH. Il porte par défaut le nom
+du cerveau (`pont-<base>`), parce que deux `Match User pont` dans deux
+fragments sshd ne cohabitent pas : sshd applique le premier, et le durcissement
+du second n'existe pas.
+
+Les mettre dans le fichier canonique ferait croire qu'il faut les choisir. Il
+ne faut pas : il faut pouvoir en sortir, ce qui n'est pas la même chose.
+"""
+variables = ["ARAC_UNIT_CURATEUR", "ARAC_COMPTE_PONT"]
+
+
+[[groupe]]
+raison = """
+NI POSÉE NI LUE : ÉCRITE ET RELUE PAR LE BOOTSTRAP, DANS LA MÊME SECONDE.
+
+`ARAC_VARS_APPELANT` n'est pas un réglage — c'est un CONSTAT. `bootstrap/lib/core.sh`
+relève, avant toute résolution, lesquelles des quatre variables d'implantation
+(`ARAC_DB_HOTE`, `ARAC_DB_PORT`, `ARAC_API_PORT`, `ARAC_COCKPIT_PORT`) l'appelant
+a posées lui-même, pour que toute commande IMPRIMÉE par le bootstrap les reporte
+et atterrisse là où l'invocation qui l'imprime a atterri. C'est le seul instant
+où l'on peut distinguer « la grappe par défaut parce que vous l'avez demandée »
+de « la grappe par défaut faute de mieux » — la seconde étant, sur un serveur
+qui héberge déjà un cerveau, celle du voisin.
+
+La poser à la main n'aurait aucun effet utile : elle est écrasée au chargement
+de `core.sh`. La documenter dans `.env.example` ferait croire le contraire.
+
+`ARAC_BACKUP_RETENTION_DEFAUT` est le DÉFAUT de la rétention, nommé une seule
+fois pour que l'écran de l'étape 9 puisse citer « ce nombre n'est retenu nulle
+part : un bootstrap relancé sans lui le ramène à 14 jours » sans citer la
+valeur courante — la citer disait « le ramène à 90 » juste après qu'on eut posé
+90, c'est-à-dire l'inverse exact de l'avertissement.
+"""
+variables = ["ARAC_VARS_APPELANT", "ARAC_BACKUP_RETENTION_DEFAUT"]
+
+
+[[groupe]]
+raison = """
+UNE VARIABLE QUI N'EXISTE QUE POUR QUE LA GARDE SOIT ÉPROUVABLE.
+
+`ARAC_ETC_DIR` est la racine des coffres — `/etc/arac` sur toute installation
+réelle, et rien d'autre. L'installateur n'a rien à poser : la déplacer casserait
+le `EnvironmentFile=` des unités, que le bootstrap écrit en absolu.
+
+Elle existe parce que la règle qui décide À QUEL CERVEAU s'adresse une commande
+d'`ops/` — cinq rangs écrits au-dessus de `ops/env.sh` — ne pouvait, sans elle,
+être éprouvée que sur une machine portant de vrais cerveaux, c'est-à-dire jamais
+dans `make test`, qui est hermétique. C'est très exactement ainsi que cette
+garde avait disparu du code sans que sept pages l'apprennent : personne ne
+pouvait la faire rougir. `tests/test_ops_env_nomme_le_cerveau_qu_il_sert.py`
+donne à `ops/env.sh` un faux `/etc` sous `tmp_path` et mesure les cinq rangs, un
+par un.
+
+`ops/install_check.sh` et `ops/uninstall_check.sh` la lisent pour la même raison
+et avec le même défaut : « où vivent les coffres ? » n'a qu'une réponse dans ce
+dépôt, et deux conventions voisines pour la même question est la classe de
+défaut que ce dépôt passe des manches à éliminer.
+"""
+variables = ["ARAC_ETC_DIR"]

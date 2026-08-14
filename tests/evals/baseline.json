@@ -1,0 +1,15 @@
+{
+  "_meta": {
+    "purpose": "Référence de comparaison — ENGENDRÉE, pas écrite à la main.",
+    "comment_produire": "python3 tests/evals/run_eval.py --write-baseline",
+    "pourquoi": "Ce fichier est la photo de ce que votre rappel savait faire un jour donné. Sans lui, « le rappel s'est amélioré » n'est qu'une impression. Il est vide tant que vous n'avez pas mesuré : un chiffre hérité d'un autre cerveau ne dirait rien du vôtre."
+  },
+  "k": 5,
+  "summary": {
+    "n": 0,
+    "recall_at_k": null,
+    "mrr": null,
+    "avg_top1_distance": null
+  },
+  "per_query": []
+}

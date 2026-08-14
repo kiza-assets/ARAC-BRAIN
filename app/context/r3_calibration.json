@@ -1,0 +1,463 @@
+{
+  "bands": {
+    "high_max": 0.15,
+    "medium_max": 0.23,
+    "abstain_min": 0.53
+  },
+  "gap_floor_by_stage": {
+    "A": {
+      "threshold": 0.11003406867502821,
+      "source_percentile": "p99"
+    },
+    "B": {
+      "threshold": 0.030591957093029865,
+      "source_percentile": "p92"
+    }
+  },
+  "scope_boost": {
+    "enabled": false,
+    "window": 10,
+    "dominance_threshold": 0.7,
+    "magnitude": 0.0
+  },
+  "modifiers": {
+    "freshness": {
+      "enabled": true,
+      "stale_penalty": 0.02,
+      "fresh_boost": 0.0
+    },
+    "confidence": {
+      "enabled": true,
+      "low_threshold": 50,
+      "high_threshold": 85,
+      "low_penalty": 0.03,
+      "high_boost": 0.03
+    },
+    "kind": {
+      "enabled": false,
+      "boosts": {},
+      "magnitude_cap": 0.05
+    },
+    "total_cap": 0.2
+  },
+  "consumer_profiles": {
+    "cortex_dedup": {
+      "name": "cortex_dedup",
+      "budget_k": 3,
+      "require_high_band": false
+    },
+    "session_interactive": {
+      "name": "session_interactive",
+      "budget_k": 10,
+      "require_high_band": false
+    },
+    "canari_strict": {
+      "name": "canari_strict",
+      "budget_k": 3,
+      "require_high_band": true
+    }
+  },
+  "version": "r3-calib-v1-20260708",
+  "provenance": {
+    "computed_on": "split=calib UNIQUEMENT — 200 requêtes A + 270 requêtes B, seed_generation=7",
+    "n_calib_a": 200,
+    "n_calib_b": 270,
+    "k_max_pool": 100,
+    "budget_k_reference_for_gap_floor_bands_sweep": 10,
+    "scope_boost_carried_from_r1": "CARRIÉ depuis r1-calib-v1-20260708 (rungs/r1_calibration.json) — PAS re-swept : même contrainte d'interface (Policy.decide() sans scope appelant), même conclusion structurelle attendue qu'un re-balayage identique, cf docstring R3Calibration/calibrate_r3.",
+    "freshness_sweep": {
+      "baseline_success_at_1_f4": 0.175,
+      "baseline_success_at_1_scorable_all": 0.21395348837209302,
+      "grid_n_candidates": 10,
+      "grid": [
+        {
+          "stale_penalty": 0.0,
+          "fresh_boost": 0.0,
+          "success_at_1_f4": 0.175,
+          "success_at_1_scorable_all": 0.21395348837209302
+        },
+        {
+          "stale_penalty": 0.0,
+          "fresh_boost": 0.05,
+          "success_at_1_f4": 0.175,
+          "success_at_1_scorable_all": 0.21395348837209302
+        },
+        {
+          "stale_penalty": 0.02,
+          "fresh_boost": 0.0,
+          "success_at_1_f4": 0.2,
+          "success_at_1_scorable_all": 0.2186046511627907
+        },
+        {
+          "stale_penalty": 0.02,
+          "fresh_boost": 0.05,
+          "success_at_1_f4": 0.2,
+          "success_at_1_scorable_all": 0.2186046511627907
+        },
+        {
+          "stale_penalty": 0.05,
+          "fresh_boost": 0.0,
+          "success_at_1_f4": 0.2,
+          "success_at_1_scorable_all": 0.2186046511627907
+        },
+        {
+          "stale_penalty": 0.05,
+          "fresh_boost": 0.05,
+          "success_at_1_f4": 0.2,
+          "success_at_1_scorable_all": 0.2186046511627907
+        },
+        {
+          "stale_penalty": 0.08,
+          "fresh_boost": 0.0,
+          "success_at_1_f4": 0.2,
+          "success_at_1_scorable_all": 0.2186046511627907
+        },
+        {
+          "stale_penalty": 0.08,
+          "fresh_boost": 0.05,
+          "success_at_1_f4": 0.2,
+          "success_at_1_scorable_all": 0.2186046511627907
+        },
+        {
+          "stale_penalty": 0.12,
+          "fresh_boost": 0.0,
+          "success_at_1_f4": 0.2,
+          "success_at_1_scorable_all": 0.2186046511627907
+        },
+        {
+          "stale_penalty": 0.12,
+          "fresh_boost": 0.05,
+          "success_at_1_f4": 0.2,
+          "success_at_1_scorable_all": 0.2186046511627907
+        }
+      ],
+      "decision": "ENABLED — stale_penalty=0.02 bat strictement le baseline F4 sur CALIB (0.2000 > 0.1750), sans régression scorable globale",
+      "n_f4_calib": 40,
+      "n_scorable_calib": 430
+    },
+    "confidence_sweep": {
+      "baseline_success_at_1_scorable_all": 0.2186046511627907,
+      "grid_n_candidates": 12,
+      "grid_top5": [
+        {
+          "low_threshold": 50,
+          "high_threshold": 85,
+          "low_penalty": 0.03,
+          "high_boost": 0.03,
+          "success_at_1_scorable_all": 0.26046511627906976
+        },
+        {
+          "low_threshold": 60,
+          "high_threshold": 85,
+          "low_penalty": 0.03,
+          "high_boost": 0.03,
+          "success_at_1_scorable_all": 0.26046511627906976
+        },
+        {
+          "low_threshold": 50,
+          "high_threshold": 85,
+          "low_penalty": 0.0,
+          "high_boost": 0.03,
+          "success_at_1_scorable_all": 0.25813953488372093
+        },
+        {
+          "low_threshold": 60,
+          "high_threshold": 85,
+          "low_penalty": 0.0,
+          "high_boost": 0.03,
+          "success_at_1_scorable_all": 0.25813953488372093
+        },
+        {
+          "low_threshold": 60,
+          "high_threshold": 85,
+          "low_penalty": 0.03,
+          "high_boost": 0.0,
+          "success_at_1_scorable_all": 0.22325581395348837
+        }
+      ],
+      "decision": "ENABLED — low=50 high=85 pen=0.03 boost=0.03 bat strictement le baseline sur CALIB (0.2605 > 0.2186)",
+      "n_scorable_calib": 430
+    },
+    "kind_sweep": {
+      "overall_success_at_1_top1": 0.26046511627906976,
+      "per_kind": {
+        "reference": {
+          "success_at_1": 0.3877551020408163,
+          "n": 49
+        },
+        "state": {
+          "success_at_1": 0.1625,
+          "n": 80
+        },
+        "pattern": {
+          "success_at_1": 0.25806451612903225,
+          "n": 62
+        },
+        "gotcha": {
+          "success_at_1": 0.2967032967032967,
+          "n": 91
+        },
+        "todo": {
+          "success_at_1": 0.09090909090909091,
+          "n": 11
+        },
+        "decision": {
+          "success_at_1": 0.2545454545454545,
+          "n": 110
+        },
+        "note": {
+          "success_at_1": 0.3125,
+          "n": 16
+        }
+      },
+      "boosts_selected": {
+        "reference": 0.05,
+        "note": 0.026
+      },
+      "enabled": false,
+      "success_at_1_scorable_before": 0.26046511627906976,
+      "success_at_1_scorable_after": 0.24186046511627907,
+      "decision": "DÉSACTIVÉ — aucun kind au-dessus de la marge avec n suffisant, ou gain net non confirmé"
+    },
+    "gap_floor_sweep_by_stage": {
+      "A": {
+        "recall_at_budget_k": 0.46,
+        "grid": [
+          {
+            "percentile": "p50",
+            "threshold": 0.0057287903233849136,
+            "recall_at_stop": 0.265,
+            "recall_at_budget_k": 0.46,
+            "retention_ratio": 0.5760869565217391,
+            "mean_items_kept": 1.235
+          },
+          {
+            "percentile": "p60",
+            "threshold": 0.007685727758076788,
+            "recall_at_stop": 0.275,
+            "recall_at_budget_k": 0.46,
+            "retention_ratio": 0.5978260869565217,
+            "mean_items_kept": 1.36
+          },
+          {
+            "percentile": "p70",
+            "threshold": 0.011169643501658411,
+            "recall_at_stop": 0.3,
+            "recall_at_budget_k": 0.46,
+            "retention_ratio": 0.6521739130434782,
+            "mean_items_kept": 1.69
+          },
+          {
+            "percentile": "p75",
+            "threshold": 0.01348680390908355,
+            "recall_at_stop": 0.3,
+            "recall_at_budget_k": 0.46,
+            "retention_ratio": 0.6521739130434782,
+            "mean_items_kept": 2.035
+          },
+          {
+            "percentile": "p80",
+            "threshold": 0.016523771242099784,
+            "recall_at_stop": 0.31,
+            "recall_at_budget_k": 0.46,
+            "retention_ratio": 0.6739130434782609,
+            "mean_items_kept": 2.635
+          },
+          {
+            "percentile": "p90",
+            "threshold": 0.02834663686144664,
+            "recall_at_stop": 0.355,
+            "recall_at_budget_k": 0.46,
+            "retention_ratio": 0.7717391304347825,
+            "mean_items_kept": 4.635
+          },
+          {
+            "percentile": "p92",
+            "threshold": 0.034236617742933,
+            "recall_at_stop": 0.37,
+            "recall_at_budget_k": 0.46,
+            "retention_ratio": 0.8043478260869564,
+            "mean_items_kept": 5.38
+          },
+          {
+            "percentile": "p95",
+            "threshold": 0.04853728937837842,
+            "recall_at_stop": 0.41,
+            "recall_at_budget_k": 0.46,
+            "retention_ratio": 0.8913043478260869,
+            "mean_items_kept": 6.705
+          },
+          {
+            "percentile": "p97",
+            "threshold": 0.06474374005461911,
+            "recall_at_stop": 0.435,
+            "recall_at_budget_k": 0.46,
+            "retention_ratio": 0.9456521739130435,
+            "mean_items_kept": 7.89
+          },
+          {
+            "percentile": "p99",
+            "threshold": 0.11003406867502821,
+            "recall_at_stop": 0.46,
+            "recall_at_budget_k": 0.46,
+            "retention_ratio": 1.0,
+            "mean_items_kept": 9.215
+          },
+          {
+            "percentile": "p100",
+            "threshold": 0.2222508614201114,
+            "recall_at_stop": 0.46,
+            "recall_at_budget_k": 0.46,
+            "retention_ratio": 1.0,
+            "mean_items_kept": 10.0
+          }
+        ],
+        "decision": "retenu p99 (étage A) — 1er percentile (le plus bas) à retention recall >=95% vs budget k=10",
+        "n_scorable_calib": 200,
+        "n_gap_samples": 1800,
+        "n_stage_calib": 200
+      },
+      "B": {
+        "recall_at_budget_k": 0.9739130434782609,
+        "grid": [
+          {
+            "percentile": "p50",
+            "threshold": 0.0028515502961200534,
+            "recall_at_stop": 0.34347826086956523,
+            "recall_at_budget_k": 0.9739130434782609,
+            "retention_ratio": 0.35267857142857145,
+            "mean_items_kept": 1.673913043478261
+          },
+          {
+            "percentile": "p60",
+            "threshold": 0.004927880982649846,
+            "recall_at_stop": 0.39565217391304347,
+            "recall_at_budget_k": 0.9739130434782609,
+            "retention_ratio": 0.40625,
+            "mean_items_kept": 2.130434782608696
+          },
+          {
+            "percentile": "p70",
+            "threshold": 0.007886789459516763,
+            "recall_at_stop": 0.4608695652173913,
+            "recall_at_budget_k": 0.9739130434782609,
+            "retention_ratio": 0.4732142857142857,
+            "mean_items_kept": 2.6695652173913045
+          },
+          {
+            "percentile": "p75",
+            "threshold": 0.010580741985739606,
+            "recall_at_stop": 0.5304347826086957,
+            "recall_at_budget_k": 0.9739130434782609,
+            "retention_ratio": 0.5446428571428572,
+            "mean_items_kept": 3.130434782608696
+          },
+          {
+            "percentile": "p80",
+            "threshold": 0.01327037101160797,
+            "recall_at_stop": 0.5956521739130435,
+            "recall_at_budget_k": 0.9739130434782609,
+            "retention_ratio": 0.6116071428571428,
+            "mean_items_kept": 3.743478260869565
+          },
+          {
+            "percentile": "p90",
+            "threshold": 0.027221647959015022,
+            "recall_at_stop": 0.8478260869565217,
+            "recall_at_budget_k": 0.9739130434782609,
+            "retention_ratio": 0.8705357142857142,
+            "mean_items_kept": 6.495652173913044
+          },
+          {
+            "percentile": "p92",
+            "threshold": 0.030591957093029865,
+            "recall_at_stop": 0.9304347826086956,
+            "recall_at_budget_k": 0.9739130434782609,
+            "retention_ratio": 0.9553571428571428,
+            "mean_items_kept": 7.517391304347826
+          },
+          {
+            "percentile": "p95",
+            "threshold": 0.04402850641449623,
+            "recall_at_stop": 0.9695652173913043,
+            "recall_at_budget_k": 0.9739130434782609,
+            "retention_ratio": 0.9955357142857142,
+            "mean_items_kept": 8.404347826086957
+          },
+          {
+            "percentile": "p97",
+            "threshold": 0.06202292348066699,
+            "recall_at_stop": 0.9739130434782609,
+            "recall_at_budget_k": 0.9739130434782609,
+            "retention_ratio": 1.0,
+            "mean_items_kept": 9.004347826086956
+          },
+          {
+            "percentile": "p99",
+            "threshold": 0.10664949541019308,
+            "recall_at_stop": 0.9739130434782609,
+            "recall_at_budget_k": 0.9739130434782609,
+            "retention_ratio": 1.0,
+            "mean_items_kept": 9.673913043478262
+          },
+          {
+            "percentile": "p100",
+            "threshold": 0.2002008024883366,
+            "recall_at_stop": 0.9739130434782609,
+            "recall_at_budget_k": 0.9739130434782609,
+            "retention_ratio": 1.0,
+            "mean_items_kept": 10.0
+          }
+        ],
+        "decision": "retenu p92 (étage B) — 1er percentile (le plus bas) à retention recall >=95% vs budget k=10",
+        "n_scorable_calib": 230,
+        "n_gap_samples": 2430,
+        "n_stage_calib": 270
+      }
+    },
+    "bands_sweep": {
+      "monotonic_ok": true,
+      "high_max": 0.15,
+      "medium_max": 0.23,
+      "abstain_min": 0.53,
+      "n_scorable_calib": 430,
+      "n_f6_calib": 40,
+      "f1_abstention_top5": [
+        {
+          "threshold": 0.53,
+          "precision_abstention": 0.975,
+          "recall_non_abstention": 0.9279069767441861,
+          "f1": 0.9508707607699358
+        },
+        {
+          "threshold": 0.51,
+          "precision_abstention": 1.0,
+          "recall_non_abstention": 0.9023255813953488,
+          "f1": 0.9486552567237163
+        },
+        {
+          "threshold": 0.55,
+          "precision_abstention": 0.95,
+          "recall_non_abstention": 0.9418604651162791,
+          "f1": 0.9459127228027043
+        },
+        {
+          "threshold": 0.49,
+          "precision_abstention": 1.0,
+          "recall_non_abstention": 0.8883720930232558,
+          "f1": 0.9408866995073892
+        },
+        {
+          "threshold": 0.47,
+          "precision_abstention": 1.0,
+          "recall_non_abstention": 0.8651162790697674,
+          "f1": 0.9276807980049876
+        }
+      ],
+      "success_rate_high": 0.5384615384615384,
+      "success_rate_medium": 0.4423076923076923,
+      "success_rate_low": 0.23952095808383234
+    },
+    "consumer_profiles_source": "DESIGN, non calibré par sweep — cf ce/candidat-sortant-G2.json §4 (calibration_r3.CONSUMER_PROFILES), même statut que config.K_DEFAULT pour R1"
+  }
+}
