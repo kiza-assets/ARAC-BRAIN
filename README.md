@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/banniere.svg" alt="ARAC BRAIN — Claude Desktop pour réfléchir. Claude Code pour construire. ARAC BRAIN pour se souvenir." width="100%">
+  <img src="assets/banniere.png" alt="ARAC BRAIN — Claude Desktop pour réfléchir. Claude Code pour construire. ARAC BRAIN pour se souvenir." width="100%">
 </p>
 
 <p align="center">
