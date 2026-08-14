@@ -960,6 +960,6 @@ exact — y compris ce dont un tel atome n'est **pas** exclu — est au § 4 du 
 
 <p align="center">
   <img src="assets/logo.svg" alt="" width="40" height="40"><br>
-  <strong>ARAC BRAIN</strong> — un projet <a href="https://linkedin.com/in/renlew">KIZA</a><br>
+  <strong>ARAC BRAIN</strong> — un projet <a href="https://linkedin.com/in/renlew">Ren LEW</a><br>
   <sub>MIT · <a href="docs/LIMITES-CONNUES.md">Limites connues</a> · <a href="docs/DECISIONS-ARCHITECTURE.md">Décisions d'architecture</a> · <a href="SECURITY.md">Sécurité</a></sub>
 </p>

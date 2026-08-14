@@ -284,15 +284,19 @@ EXCEPTIONS: tuple[Exception_, ...] = (
         "Elle nomme le titulaire du projet, jamais un utilisateur ni une "
         "installation.",
     ),
-    Exception_(
-        "societe", "README.md",
-        "La signature de pied de page : « un projet KIZA », avec le lien du "
-        "mainteneur. Tout projet ouvert nomme qui le porte — c'est ce qui "
-        "permet d'y adresser un rapport, une question ou une reprise. "
-        "Elle apparaît UNE fois, en pied de page, et ne dit rien du cerveau "
-        "de qui que ce soit : le lecteur qui installe n'hérite ni d'une "
-        "taxonomie, ni d'un chemin, ni d'une valeur par défaut.",
-    ),
+    # RETIRÉE — `README.md` / motif « societe ».
+    #
+    # Elle couvrait une signature de pied de page qui disait « un projet KIZA ».
+    # Le mainteneur a préféré signer de son nom d'usage, qui n'est pas la
+    # société : le README ne porte plus le motif, et la dispense ne couvrait
+    # donc plus rien.
+    #
+    # On la retire au lieu de la garder « au cas où » : une dispense sans faute
+    # à couvrir est une porte laissée ouverte — le jour où le nom reviendrait
+    # dans ce fichier, personne ne le verrait. C'est le test
+    # `test_chaque_exception_est_justifiee_et_utile` qui l'exige, et il a raison.
+    #
+    # Le nom du titulaire reste où le droit l'exige : LICENSE et pyproject.toml.
     # RETIRÉE — `config/scopes.example.toml` / motif « societe ».
     #
     # Elle disait : « C'est la taxonomie de l'auteur, montrée comme un exemple
