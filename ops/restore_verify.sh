@@ -606,6 +606,8 @@ $(_remede_createdb)"
             echo "ÉCHEC : l'extension « $ext » n'est pas installée sur ce serveur PostgreSQL." >&2
             echo "        Aucune restauration de ce cerveau n'est possible ici." >&2
             echo "        sudo apt install postgresql-16-pgvector    (adaptez la version majeure)" >&2
+            echo "        pgvector >= 0.7.0 est requis (halfvec) : Ubuntu 24.04 livre 0.6.0 ; activez" >&2
+            echo "        d'abord le dépôt PGDG : sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh" >&2
         else
             echo "ÉCHEC : « $ext » est disponible, mais ce rôle n'a pas le droit de la créer." >&2
             sed 's/^/        /' "$TMPDIR_SELF/ext.err" >&2

@@ -351,6 +351,43 @@ pg_lire() { # requete
     psql_super -d postgres -tAc "$1" 2>/dev/null || true
 }
 
+# --- LA VERSION MINIMALE DE PGVECTOR ----------------------------------------
+#
+# Le type halfvec (colonnes d'embeddings, index HNSW) n'existe qu'à partir de
+# pgvector 0.7.0. Ubuntu 24.04 livre 0.6.0 : le paquet s'installe, l'extension
+# se crée, puis la première migration échoue sur « type "halfvec" does not
+# exist ». Le seuil est défini ICI, une seule fois ; l'étape 1 (constat), l'étape 4
+# (activation) et la documentation le citent.
+ARAC_PGVECTOR_MIN="0.7.0"
+
+# Comparaison pure, sans dépendance : succès si $1 >= $2, composante par
+# composante et numériquement (0.10.0 > 0.7.0). Une version vide ou illisible
+# (rien d'autre que « N.N » ou « N.N.N ») est REFUSÉE : mieux vaut un faux refus
+# expliqué qu'une migration qui casse au milieu.
+version_au_moins() { # version minimum
+    local v="${1:-}" min="${2:-}" re='^[0-9]+(\.[0-9]+){1,2}$'
+    [[ "$v" =~ $re && "$min" =~ $re ]] || return 1
+    local -a a b
+    IFS=. read -r -a a <<< "$v"
+    IFS=. read -r -a b <<< "$min"
+    local i x y
+    for i in 0 1 2; do
+        x="${a[i]:-0}"; y="${b[i]:-0}"
+        (( 10#$x > 10#$y )) && return 0
+        (( 10#$x < 10#$y )) && return 1
+    done
+    return 0
+}
+
+# Le remède, partagé par l'étape 1 et l'étape 4 : le paquet du dépôt Ubuntu est
+# trop vieux, il faut le dépôt officiel PostgreSQL (PGDG).
+remede_pgvector_pgdg() {
+    printf '%s\n' \
+"sudo apt install -y postgresql-common && sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
+sudo apt install postgresql-16-pgvector
+sudo systemctl restart postgresql"
+}
+
 # --- À QUI APPARTIENT CE PORT ? ---------------------------------------------
 #
 # Un numéro de port appartient à la MACHINE, jamais à un cerveau. 8000 et 8100

@@ -72,6 +72,16 @@ sudo systemctl enable --now postgresql
 > **Adaptez le numéro de version.** `postgresql-16-pgvector` ne sert à rien si votre
 > serveur tourne en 15 ou 17. Le paquet pgvector est lié à la version majeure.
 
+> **pgvector doit être en version 0.7.0 ou plus.** Le schéma emploie le type `halfvec`,
+> qui n'existe pas avant. Ubuntu 24.04 livre **0.6.0** : le paquet ci-dessus s'installe,
+> puis la migration échoue sur `type "halfvec" does not exist`. Sur Ubuntu 24.04, activez
+> d'abord le dépôt officiel PostgreSQL (PGDG), qui livre une version récente :
+>
+> ```bash
+> sudo apt install -y postgresql-common && sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
+> sudo apt install postgresql-16-pgvector
+> ```
+
 ### Le paquet qui n'est pas dans `apt`, et qui décide si le cerveau apprend
 
 ```bash
@@ -123,8 +133,9 @@ sudo -u postgres psql -p "$PGPORT_BASE" -tAc \
 ```
 
 **Doit répondre** : une version de client, une version de serveur ≥ 16, et **deux lignes**
-d'extensions — une pour `pg_trgm`, une pour `vector`. Si `vector` manque à l'appel, pgvector
-n'est pas installé pour cette version majeure de PostgreSQL.
+d'extensions — une pour `pg_trgm`, une pour `vector`, dont la version doit être **≥ 0.7.0**
+(Ubuntu 24.04 livre 0.6.0 : voir les deux commandes PGDG plus haut). Si `vector` manque à
+l'appel, pgvector n'est pas installé pour cette version majeure de PostgreSQL.
 
 > **Deux détails qui évitent de croire à une panne.** La troisième requête **nomme**
 > l'extension et **trie** : sans `ORDER BY`, PostgreSQL ne garantit aucun ordre, et deux

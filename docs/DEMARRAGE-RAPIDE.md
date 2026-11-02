@@ -212,7 +212,11 @@ Puis relancez `./bootstrap/bootstrap.sh --check` jusqu'au vert.
 >   "SELECT default_version FROM pg_available_extensions WHERE name='vector'"
 > ```
 >
-> Vous devez obtenir un numéro de version, pas une ligne vide. **Le `-p` désigne la grappe
+> Vous devez obtenir un numéro de version **≥ 0.7.0**, pas une ligne vide. Ubuntu 24.04
+> livre 0.6.0, trop ancien (le type `halfvec` manque) : activez d'abord le dépôt officiel
+> PostgreSQL, `sudo apt install -y postgresql-common && sudo
+> /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh`, puis réinstallez
+> `postgresql-16-pgvector`. Voir `docs/DEPANNAGE.md` §3. **Le `-p` désigne la grappe
 > où votre cerveau va vivre** : sans lui, la réponse vient de la grappe **par défaut** de
 > la machine, et vous installeriez pgvector pour la mauvaise majeure de PostgreSQL.
 >

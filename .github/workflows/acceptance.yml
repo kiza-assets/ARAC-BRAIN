@@ -80,7 +80,13 @@ jobs:
       # recopie les commandes que le bootstrap lui a données.
       - name: prérequis système (ce que le bootstrap nomme sans l'installer)
         run: |
+          # pgvector >= 0.7 est exigé (type halfvec). Le dépôt Ubuntu 24.04
+          # livre 0.6.0 : sans PGDG, le bootstrap refuse à l'étape 4. On fait
+          # ce que fait l'utilisateur à qui le bootstrap donne le remède.
           sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          apt-cache policy postgresql-16-pgvector | head -3
           sudo apt-get install -y -qq \
             postgresql-16 postgresql-16-pgvector postgresql-client-16 \
             python3-venv rsync curl

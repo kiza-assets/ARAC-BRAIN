@@ -361,6 +361,20 @@ sudo systemctl restart postgresql
 sudo ./bootstrap/bootstrap.sh --from vecteurs
 ```
 
+**Version trop ancienne (`type "halfvec" does not exist`).** Le schéma exige
+**pgvector ≥ 0.7.0** ; Ubuntu 24.04 livre 0.6.0. Le bootstrap le refuse à l'étape 4 ; si
+vous voyez plutôt l'erreur `psycopg.errors.UndefinedObject: type "halfvec" does not
+exist` pendant les migrations, la cause est la même. Remède : le dépôt officiel PostgreSQL
+(PGDG), puis, si l'extension existe déjà dans la base, sa mise à jour.
+
+```bash
+sudo apt install -y postgresql-common && sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
+sudo apt install postgresql-16-pgvector
+sudo systemctl restart postgresql
+sudo -u postgres psql -p "$PGPORT_BASE" -d <votre_base> -c 'ALTER EXTENSION vector UPDATE;'
+sudo ./bootstrap/bootstrap.sh --from vecteurs
+```
+
 **Pourquoi c'est bloquant et non contournable.** Sans pgvector, le rappel se réduit à du
 `ctrl-F` : le cerveau retrouve exactement ce dont vous vous souvenez déjà, ce qui est
 l'inverse du but.

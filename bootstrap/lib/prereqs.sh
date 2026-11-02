@@ -80,9 +80,15 @@ sudo systemctl enable --now postgresql"
     local vect=non vectv="" vecttxt="absent"
     vectv="$(pg_lire "SELECT default_version FROM pg_available_extensions WHERE name='vector'")"
     if [[ -n "$vectv" ]]; then vect=oui; vecttxt="v$vectv"; fi
+    # Présent ne suffit pas : halfvec exige pgvector >= $ARAC_PGVECTOR_MIN, et
+    # Ubuntu 24.04 livre 0.6.0 (voir core.sh).
+    if [[ "$vect" == oui ]] && ! version_au_moins "$vectv" "$ARAC_PGVECTOR_MIN"; then
+        vect=non
+        vecttxt="v$vectv, trop ancien : minimum $ARAC_PGVECTOR_MIN (type halfvec)"
+    fi
     _prerequis "pgvector" "$vect" \
         "comparer des sens, pas des mots : sans lui, aucun rappel par similarité — $vecttxt" \
-        "sudo apt install postgresql-16-pgvector"
+        "$(remede_pgvector_pgdg)"
 
     # --- Outils -----------------------------------------------------------
     _prerequis "git" "$(_present git)" \

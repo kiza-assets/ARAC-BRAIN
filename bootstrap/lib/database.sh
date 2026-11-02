@@ -960,8 +960,36 @@ souvenez déjà."
         echec "pgvector n'est pas disponible sur ce serveur" \
               "PostgreSQL ne connaît pas l'extension « vector ». Le paquet n'est
 pas installé, ou pas pour cette version majeure du serveur." \
-              "sudo apt install postgresql-16-pgvector
-sudo systemctl restart postgresql
+              "$(remede_pgvector_pgdg)
+$(geste_bootstrap "--from vecteurs")"
+        exit 7
+    fi
+
+    # Présent ne suffit pas : halfvec (0.7.0) est exigé par la première
+    # migration. Ubuntu 24.04 livre 0.6.0 — le paquet s'installe, puis les
+    # migrations échouent. On refuse ICI, avec le remède, pas à l'étape 5.
+    if ! version_au_moins "$dispo" "$ARAC_PGVECTOR_MIN"; then
+        echec "pgvector $dispo est trop ancien (minimum : $ARAC_PGVECTOR_MIN)" \
+              "Le schéma du cerveau utilise le type halfvec, apparu en pgvector
+$ARAC_PGVECTOR_MIN. Le paquet du dépôt Ubuntu (24.04) livre 0.6.0 : il s'installe,
+puis la migration échoue sur « type \"halfvec\" does not exist ».
+Il faut le paquet du dépôt officiel PostgreSQL (PGDG)." \
+              "$(remede_pgvector_pgdg)
+$(geste_bootstrap "--from vecteurs")"
+        exit 7
+    fi
+
+    # Et si l'extension existe DÉJÀ dans la base en version ancienne, mettre à
+    # jour le paquet ne suffit pas : CREATE EXTENSION IF NOT EXISTS ne la touche pas.
+    local deja
+    deja="$(pg_lire_base "SELECT extversion FROM pg_extension WHERE extname='vector'")"
+    if [[ -n "$deja" ]] && ! version_au_moins "$deja" "$ARAC_PGVECTOR_MIN"; then
+        echec "l'extension vector de « $ARAC_DB » est en v$deja (minimum : $ARAC_PGVECTOR_MIN)" \
+              "Le paquet disponible est assez récent (v$dispo), mais l'extension déjà
+créée dans la base reste à sa version d'origine tant qu'on ne la met pas à jour.
+Sans halfvec, la migration échouera sur « type \"halfvec\" does not exist »." \
+              "sudo systemctl restart postgresql
+sudo -u $ARAC_PG_SUPERUSER psql -p $ARAC_DB_PORT -d \"$ARAC_DB\" -c 'ALTER EXTENSION vector UPDATE;'
 $(geste_bootstrap "--from vecteurs")"
         exit 7
     fi

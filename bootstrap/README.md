@@ -578,7 +578,7 @@ attraperaient :
 |---|---|---|
 | « Votre cerveau n'a pas encore été décrit » | l'entretien n'a pas été fait | `python3 bootstrap/wizard.py` |
 | « Taxonomie refusée » | une racine sans feuille, une clé invalide | le message dit quoi corriger, et où |
-| « pgvector n'est pas disponible » | paquet absent, ou pour une autre version majeure | `sudo apt install postgresql-16-pgvector && sudo systemctl restart postgresql` |
+| « pgvector n'est pas disponible » ou « trop ancien » | paquet absent, pour une autre version majeure, ou < 0.7.0 (Ubuntu 24.04 livre 0.6.0) | dépôt PGDG : `sudo apt install -y postgresql-common && sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh`, puis `sudo apt install postgresql-16-pgvector && sudo systemctl restart postgresql` |
 | Alembic s'arrête | extension manquante, ou droits | relire le message ; puis `--from migrations` |
 | « Retrait refusé — du savoir vivant serait orphelin » | un domaine habité a disparu de `scopes.toml` | le remettre, ou déplacer ses souvenirs d'abord |
 | Un service ne démarre pas | `ExecStart` pointe vers du code absent | `journalctl -u <unité> -n 40 --no-pager` |
