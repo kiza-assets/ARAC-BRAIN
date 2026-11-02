@@ -482,8 +482,10 @@ voisins). *Fait quand :* un test vérifie que la réponse d'un rappel contient c
 
 **3.A Une file de revue qu'un humain peut vider — PARTIEL.** *Constaté :* la table
 `arac.memory_review_queue` est créée par `db/alembic/versions/0034_memory_review_queue.py`,
-alimentée par `agents/cortex/review_queue.py:94` et comptée par le cockpit
-(`control_center/collectors/db_metrics.py:214`). Le cockpit n'écrit pas
+lue par `app/perception/ingest_watchdog.py:520` et comptée par le cockpit
+(`control_center/collectors/db_metrics.py:214`), mais **aucun producteur** ne l'alimente dans ce
+dépôt (en-tête de 0034). Les messages géants vont dans une autre table,
+`arac.digestion_review_queue` (`agents/cortex/review_queue.py:94`). Le cockpit n'écrit pas
 ([`LIMITES-CONNUES.md`](LIMITES-CONNUES.md) §1.6) ; la validation n'est branchée nulle part
 (§2.4). *Visé, **PROSPECTIF** :* un geste de validation hors cockpit, qui fait passer
 un atome de `agent_suggest` à `auditor_validated` (`app/schemas/atom.py:60-61`). *Fait
@@ -526,7 +528,7 @@ la suite de tests (`SECURITY.md:63-66`, [`LIMITES-CONNUES.md`](LIMITES-CONNUES.m
 *Fait quand :* chaque garantie citée dans `SECURITY.md` renvoie à un test qui la vérifie.
 
 **5.B Contribuer un cas de benchmark — PARTIEL.** *Constaté :* un guide de contribution
-existe ([`CONTRIBUER.md`](CONTRIBUER.md)) et la CI joue la suite (`.github/workflows/tests.yml:66`).
+existe ([`CONTRIBUER.md`](CONTRIBUER.md)) et la CI joue la suite (`.github/workflows/tests.yml:78`).
 Rien ne décrit comment proposer une requête d'évaluation. *Visé, **PROSPECTIF** :* un gabarit
 de contribution pour les cas où le rappel échoue. *Fait quand :* une contribution de ce type
 est acceptée sans modifier de code.

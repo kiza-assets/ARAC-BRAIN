@@ -18,7 +18,7 @@ Rubriques employées : **Ajouté**, **Modifié**, **Corrigé**, **Retiré**, **S
 
 > **Les numéros de ce journal ne sont pas tous ceux de `pyproject.toml`.** La version
 > **1.0.0** a été publiée (étiquette du 2026-08-14) et `pyproject.toml` porte désormais le
-> numéro de la dernière version publiée. Les entrées **0.1.x** ci-dessous, plus anciennes,
+> numéro de la version courante (1.1.0). Les entrées **0.1.x** ci-dessous, plus anciennes,
 > numérotent en revanche des **lots de travail** antérieurs à cette publication, pas des
 > versions : elles n'ont jamais été publiées sous ces numéros. C'est dit ici pour qu'un lecteur qui compare
 > les deux et trouve un écart sache lequel des deux ment — aucun : ils ne comptent pas la
@@ -26,7 +26,7 @@ Rubriques employées : **Ajouté**, **Modifié**, **Corrigé**, **Retiré**, **S
 
 ---
 
-## [1.1.0] — 2026-11-03
+## [1.1.0] — 2026-11-02
 
 Lot **les cycles ne tournent plus à vide**. Notes de version :
 [`docs/RELEASE-NOTES-1.1.0.md`](docs/RELEASE-NOTES-1.1.0.md). Mise à jour : `git pull`

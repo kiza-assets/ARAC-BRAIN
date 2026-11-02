@@ -528,9 +528,9 @@ _EVENT_SQL: dict[str, str] = {
            c.conversation_uid,
            /* L'ÉTIQUETTE d'une source peut retomber sur l'UID : il faut bien
               nommer le lien. L'ARGUMENT d'une phrase, non — « conversation
-              absorbée : « 9b5572cf-… » » présente un identifiant comme un titre,
+              absorbée : « 0a1b2c3d-… » » présente un identifiant comme un titre,
               et le lecteur ne peut plus distinguer une conversation nommée d'une
-              conversation anonyme. 102 des 365 conversations sont dans ce cas. */
+              conversation anonyme. Une conversation sans titre est dans ce cas. */
            coalesce(nullif(btrim(c.title), ''), c.conversation_uid),
            '/cc/v1/conversations/' || c.conversation_uid,
            jsonb_build_object(
