@@ -46,7 +46,7 @@ from agents.cortex.prompt import (  # noqa: E402
     CORTEX_SYSTEM_PROMPT,
     CORTEX_USER_TEMPLATE,
 )
-from agents.lib import claude_cli  # noqa: E402
+from agents.lib import claude_cli, curator_lib_v2  # noqa: E402
 from agents.lib.claude_cli import run_claude_subprocess  # noqa: E402
 from agents.lib.token_count import count_tokens  # noqa: E402
 from app.schemas.scope import Scope  # noqa: E402
@@ -397,10 +397,16 @@ async def _bisected_max_conversations(conn, *, default: int, rid: int | None = N
     `default`, la bisection anti-poison ne se déclenche JAMAIS. `rid=None`
     (tests hermétiques, ou appel hors `run_cycle`) désactive l'exclusion.
     """
-    sql = "SELECT status, pack, quarantine_attributed_uids FROM arac.run_receipts "
+    # Seuls les reçus TERMINAUX pour la bisection ('done'/'quarantined'/
+    # 'spawn_failed') sont éligibles : un reçu en cours ('started'/'spawning'/
+    # 'disposing') ou sans pack pertinent ('skipped'/'empty') ne doit jamais
+    # compter parmi les « 2 derniers ».
+    sql = ("SELECT id, status, pack, quarantine_attributed_uids "
+           "FROM arac.run_receipts "
+           "WHERE status IN ('done', 'quarantined', 'spawn_failed') ")
     params: tuple[Any, ...] = ()
     if rid is not None:
-        sql += "WHERE id <> %s "
+        sql += "AND id <> %s "
         params = (rid,)
     sql += "ORDER BY id DESC LIMIT 2"
     async with conn.cursor() as cur:
@@ -410,7 +416,7 @@ async def _bisected_max_conversations(conn, *, default: int, rid: int | None = N
         return default
 
     metas: list[list[dict[str, Any]]] = []
-    for status, pack, attributed_uids in rows:
+    for _rid, status, pack, attributed_uids in rows:
         if status != "quarantined" or attributed_uids:
             return default
         if not pack:
@@ -425,6 +431,27 @@ async def _bisected_max_conversations(conn, *, default: int, rid: int | None = N
     n = len(metas[0])
     if n <= 1:
         return default  # déjà minimal, rien à bisecter
+
+    # Bisection NON permanente : les reçus `empty` ne comptent pas comme
+    # terminaux, donc les 2 mêmes quarantaines resteraient « les 2 derniers »
+    # indéfiniment. Si un reçu `empty` leur est POSTÉRIEUR, la bisection a déjà
+    # été tentée sans rien isoler -> on la relâche. Invariant : une bisection
+    # s'applique au plus jusqu'au premier run vide.
+    newest_quarantined_id = max(int(r[0]) for r in rows)
+    empty_sql = ("SELECT id FROM arac.run_receipts "
+                 "WHERE status = 'empty' AND id > %s ")
+    empty_params: tuple[Any, ...] = (newest_quarantined_id,)
+    if rid is not None:
+        empty_sql += "AND id <> %s "
+        empty_params += (rid,)
+    empty_sql += "LIMIT 1"
+    async with conn.cursor() as cur:
+        await cur.execute(empty_sql, empty_params)
+        empty_row = await cur.fetchone()
+    if empty_row:
+        _log("cortex.bisection_released", empty_receipt_id=empty_row[0],
+             quarantined_receipt_id=newest_quarantined_id)
+        return default
     return max(1, n // 2)
 
 
@@ -541,6 +568,35 @@ def _coverage_signals(
     return out
 
 
+# Artefacts d'outillage reconnus (message géant sans connaissance) : début de
+# contenu -> saut du message au lieu du parking. Jamais de regex.
+TOOL_ARTIFACT_PREFIXES: tuple[str, ...] = ("Base directory for this skill:",)
+
+
+_MIN_PREFIX_LEN = 12  # un préfixe trop court risquerait de sauter un vrai message
+
+
+def _prefix_fingerprint(prefix: str) -> str:
+    """Empreinte courte d'un préfixe reconnu : le journal ne retient aucun
+    contenu de message, seulement de quoi retrouver quelle règle a joué."""
+    return hashlib.sha256(prefix.encode("utf-8")).hexdigest()[:12]
+
+
+def _tool_artifact_prefixes() -> tuple[str, ...]:
+    """Préfixes reconnus : env `ARAC_OVERSIZED_SKIP_PREFIXES` (séparateur `|`),
+    vide/absent = `TOOL_ARTIFACT_PREFIXES`. Préfixe < 12 caractères refusé."""
+    raw = os.environ.get("ARAC_OVERSIZED_SKIP_PREFIXES", "").strip()
+    parsed = []
+    for p in (x.strip() for x in raw.split("|")):
+        if not p:
+            continue
+        if len(p) < _MIN_PREFIX_LEN:
+            _log("cortex.oversized_skip_prefix_refused", length=len(p))
+            continue
+        parsed.append(p)
+    return tuple(parsed) or TOOL_ARTIFACT_PREFIXES
+
+
 async def _record_oversized_messages(
     conn, oversized: list[dict[str, Any]], *, slot_key: str,
 ) -> str:
@@ -570,20 +626,75 @@ async def _record_oversized_messages(
     = le détail du message écarté (id/taille/tokens estimés — jamais son
     contenu brut).
     """
+    skipped_ids: set[tuple[str, int]] = set()
     for om in oversized:
-        await review_queue.insert_review_row(
-            conn, slot_key, om["uid"], "oversized_message",
-            {"message_id": om["message_id"], "chars": om["chars"],
-             "est_tokens": om["est_tokens"]},
-            None, PLACEHOLDER_SCOPE, "oversized_message",
-        )
+        # Dédoublonnage : une seule ligne `pending` par (conversation, message)
+        # — sinon 1 INSERT par run pour le même message.
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "SELECT 1 FROM arac.digestion_review_queue "
+                "WHERE conversation_uid = %s AND kind = 'oversized_message' "
+                "AND status = 'pending' "
+                "AND proposed_atom->>'message_id' = %s LIMIT 1",
+                (om["uid"], str(int(om["message_id"]))),
+            )
+            already = await cur.fetchone()
+        if already:
+            _log("cortex.oversized_already_queued",
+                 uid=om["uid"], message_id=om["message_id"])
+        else:
+            await review_queue.insert_review_row(
+                conn, slot_key, om["uid"], "oversized_message",
+                {"message_id": om["message_id"], "chars": om["chars"],
+                 "est_tokens": om["est_tokens"]},
+                None, PLACEHOLDER_SCOPE, "oversized_message",
+            )
+        # Artefact d'outillage reconnu : saut du seul message (curseur), sans parking.
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "SELECT left(content, 120) FROM arac.raw_messages "
+                "WHERE id = %s AND role = 'user'",
+                (om["message_id"],),
+            )
+            head_row = await cur.fetchone()
+        head = (head_row[0] or "").lstrip() if head_row else ""
+        matched = next((p for p in _tool_artifact_prefixes()
+                        if head.startswith(p)), None)
+        if matched is not None:
+            skipped = await curator_lib_v2.skip_tool_artifact_message(
+                conn, om["uid"], om["message_id"])
+            if skipped == 1:
+                async with conn.cursor() as cur:
+                    await cur.execute(
+                        "UPDATE arac.digestion_review_queue "
+                        "SET status = 'reviewed_dropped' "
+                        "WHERE conversation_uid = %s "
+                        "AND kind = 'oversized_message' AND status = 'pending' "
+                        "AND proposed_atom->>'message_id' = %s",
+                        (om["uid"], str(int(om["message_id"]))),
+                    )
+                # Journal : empreinte du préfixe, jamais le contenu du message.
+                _log("cortex.oversized_tool_artifact_skipped",
+                     uid=om["uid"], message_id=om["message_id"],
+                     prefix_sha=_prefix_fingerprint(matched))
+                skipped_ids.add((om["uid"], om["message_id"]))
+                continue
+            _log("cortex.oversized_tool_artifact_not_head_or_gap",
+                 uid=om["uid"], message_id=om["message_id"],
+                 prefix_sha=_prefix_fingerprint(matched))
+        # Parking : la conversation ne monopolise plus le gate (curseur intouché).
+        await curator_lib_v2.park_oversized_conversation(
+            conn, om["uid"], om["message_id"])
     items = " ; ".join(
         f"conversation={om['uid']} message_id={om['message_id']} "
-        f"~{om['est_tokens']} tokens ({om['chars']} chars)"
+        f"~{om['est_tokens']} tokens ({om['chars']} chars) "
+        + ("sauté (artefact d'outillage, curseur avancé)"
+           if (om["uid"], om["message_id"]) in skipped_ids
+           else "parqué 7 j (curseur gelé)")
         for om in oversized
     )
     return (f"🧠📦 ARAC cortex : {len(oversized)} message(s) surdimensionné(s) "
-            f"({slot_key}) — {items} — curseur gelé, voir "
+            f"({slot_key}) — {items} — voir "
             f"arac.digestion_review_queue")
 
 

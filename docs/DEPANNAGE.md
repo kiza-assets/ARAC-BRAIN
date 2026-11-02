@@ -509,6 +509,29 @@ sudo -u postgres psql -p "$PGPORT_BASE" -d "$BASE" -tAc \
 
 ---
 
+### 5 bis. Les cycles sortent « vides » en boucle, et l'alerte se répète
+
+**Le symptôme.** Chaque cycle se termine en `empty`, l'alerte « message(s)
+surdimensionné(s) » revient à chaque passage, et aucun atome n'est produit.
+
+**Ce qui se passe.** Après deux quarantaines non attribuables, le cycle réduit sa tranche
+(bisection) jusqu'à une seule conversation. Si le premier message de la plus ancienne
+dépasse à lui seul le budget, la tranche reste vide, et le cycle recommence indéfiniment.
+Deux garde-fous évitent cette boucle : la bisection est relâchée dès qu'un cycle vide lui est
+postérieur, et une conversation dont un message dépasse le budget est parquée 7 jours
+(le curseur n'avance pas, rien n'est perdu), avec une seule ligne de revue par message.
+
+```bash
+# les messages écartés, en attente de revue (remplacez le DSN par le vôtre, lecture seule)
+psql "$DATABASE_URL_READONLY" -c "SELECT conversation_uid, status, proposed_atom FROM arac.digestion_review_queue WHERE kind = 'oversized_message' ORDER BY 1 DESC LIMIT 20;"
+```
+
+Si le message géant est un artefact d'outillage (un bundle injecté, sans connaissance),
+déclarez son début dans `ARAC_OVERSIZED_SKIP_PREFIXES` (voir `docs/CONFIGURATION.md`) : il sera
+sauté au prochain passage au lieu d'être parqué.
+
+---
+
 ## 6. La synchronisation ne trouve rien à envoyer
 
 **Ce qui se passe.** Trois cas, très différents.

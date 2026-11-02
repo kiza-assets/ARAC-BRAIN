@@ -348,6 +348,71 @@ async def park_conversation(
         )
 
 
+async def park_oversized_conversation(
+    db: psycopg.AsyncConnection,
+    conversation_uid: str,
+    message_id: int,
+    *,
+    days: int = 7,
+) -> None:
+    """PARKING TEMPORAIRE d'une conversation dont un message dépasse le budget
+    PLEIN : `next_retry_at = now() + days` pour qu'elle cesse de monopoliser un
+    slot du gate (`ORDER BY min(msg_created_at)`).
+
+    Curseur, `retry_count` et `acked` INTOUCHÉS (fail-closed conservé : le
+    message n'est jamais sauté). UPDATE dédié — ne PAS réutiliser
+    `mark_curation_failed`/`defer_conversation` (plafond de backoff différent).
+
+    Limites assumées : tout writer ultérieur de `next_retry_at` peut écraser
+    ce parking ; et pendant `days` jours la conversation sort du backlog
+    « actionnable » du watchdog (la ligne review-queue dédupliquée reste le
+    signal humain).
+
+    Clé = `conversation_uid` (et non `id`, contrairement aux autres writers).
+    PAS DE COMMIT ICI (le caller committe).
+    """
+    err = _trunc_error(f"oversized_message:{message_id}")
+    async with db.cursor() as cur:
+        await cur.execute(
+            "UPDATE arac.conversations SET "
+            "  next_retry_at = now() + make_interval(days => %s), "
+            "  last_curation_error = %s "
+            "WHERE conversation_uid = %s",
+            (days, err, conversation_uid),
+        )
+
+
+async def skip_tool_artifact_message(
+    db: psycopg.AsyncConnection,
+    conversation_uid: str,
+    message_id: int,
+) -> int:
+    """Avance le curseur par-dessus UN message géant d'artefact d'outillage
+    (bundle injecté par l'outil de l'utilisateur, zéro connaissance). Trois
+    gardes : curseur < message_id, message bien en TÊTE de tranche (NOT EXISTS
+    d'un message intermédiaire), clé `conversation_uid`. Retourne
+    `cur.rowcount` (0 = pas en tête / déjà passé -> le caller retombe sur le
+    parking). PAS DE COMMIT ICI.
+    """
+    async with db.cursor() as cur:
+        await cur.execute(
+            "UPDATE arac.conversations c SET "
+            "  curated_through_message_id = %(mid)s, "
+            "  last_curation_error = %(err)s, "
+            "  next_retry_at = NULL, "
+            "  updated_at = now() "
+            "WHERE c.conversation_uid = %(uid)s "
+            "AND c.curated_through_message_id < %(mid)s "
+            "AND NOT EXISTS (SELECT 1 FROM arac.raw_messages m "
+            "  WHERE m.conversation_id = c.id "
+            "  AND m.id > c.curated_through_message_id "
+            "  AND m.id < %(mid)s)",
+            {"mid": message_id, "uid": conversation_uid,
+             "err": f"skip oversized tool artifact:{message_id}"},
+        )
+        return cur.rowcount
+
+
 async def defer_conversation(
     db: psycopg.AsyncConnection,
     conversation_id: str,

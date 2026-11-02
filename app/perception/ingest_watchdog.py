@@ -97,6 +97,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import random
 import socket
@@ -1129,6 +1130,13 @@ def _post_with_retry(client: Any, httpx_mod: Any, api: str, cid: str, text: str)
     return False, last_err
 
 
+def _quiet_httpx_logs() -> None:
+    """httpx logge en INFO l'URL complète `.../bot<jeton>/sendMessage` : on
+    relève le seuil pour que le jeton ne soit plus écrit dans les journaux."""
+    for name in ("httpx", "httpcore"):
+        logging.getLogger(name).setLevel(logging.WARNING)
+
+
 def send_telegram(text: str) -> tuple[bool, str]:
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
     chat_ids_raw = os.environ.get("TELEGRAM_ALLOWED_CHAT_IDS", "").strip()
@@ -1144,6 +1152,7 @@ def send_telegram(text: str) -> tuple[bool, str]:
     text = _truncate_for_telegram(text)
     ok_all, errs = True, []
     # timeout=15 CONSERVÉ : le fix est le retry, pas un timeout plus long.
+    _quiet_httpx_logs()
     with httpx.Client(timeout=15) as client:
         for cid in [c.strip() for c in chat_ids_raw.split(",") if c.strip()]:
             ok, detail = _post_with_retry(client, httpx, api, cid, text)

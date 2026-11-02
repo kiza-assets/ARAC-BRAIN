@@ -318,8 +318,35 @@ async def test_record_oversized_messages_now_goes_through_review_queue(monkeypat
     monkeypatch.setattr(cycle.review_queue, "insert_review_row", _fake_insert)
     monkeypatch.setattr(cycle, "_alert", lambda *_a, **_k: None)
 
+    # La fonction ouvre désormais un curseur (dédoublonnage, aucune ligne
+    # `pending` ici) et parque la conversation (mocké).
+    parked: list[tuple] = []
+
+    async def _fake_park(conn, uid, message_id, **_kw):
+        parked.append((uid, message_id))
+
+    monkeypatch.setattr(cycle.curator_lib_v2, "park_oversized_conversation", _fake_park)
+
+    class _Cur:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_a):
+            return False
+
+        async def execute(self, *_a, **_k):
+            return None
+
+        async def fetchone(self):
+            return None
+
+    class _Conn:
+        def cursor(self):
+            return _Cur()
+
     oversized = [{"uid": "conv-x", "message_id": 99, "chars": 400_000, "est_tokens": 100_000}]
-    await cycle._record_oversized_messages(object(), oversized, slot_key="slot-42")
+    await cycle._record_oversized_messages(_Conn(), oversized, slot_key="slot-42")
+    assert parked == [("conv-x", 99)]
 
     assert len(calls) == 1
     call = calls[0]
