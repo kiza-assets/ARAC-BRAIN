@@ -604,6 +604,9 @@ socket_de_l_unite() { # port unite
 # aucun secret du serveur.
 
 EMPREINTE_ROLES_AVANT=""
+# `vierge` ou `presente`, constaté « avant » ; « après » le relit pour être symétrique.
+ETAT_PROD_AVANT=""
+SOUVENIRS_AVANT=""
 
 empreinte_roles_production() {
     sudo -u postgres psql -p 5432 -d postgres -tAc \
@@ -611,34 +614,134 @@ empreinte_roles_production() {
         2>/dev/null | sha256sum | cut -c1-16
 }
 
+#: Nombre d'unités `arac*` INSTALLÉES (actives ou non) — « inconnu » si on n'a
+#: pas pu regarder. Le bootstrap public nomme ses unités arac-<CERVEAU>-api,
+#: -cockpit, -cycle, -sauvegarde… : tout ce qui commence par `arac` est une
+#: trace de cerveau. Sont exclues les seules unités que CE test crée
+#: ($PREFIXE_UNITE). On lit systemctl ET les dossiers d'unités (fail-closed) ;
+#: ni l'un ni l'autre lisible → « inconnu ».
+unites_arac_installees() {
+    local liste="" nom d lu=0 n=0
+    local -A vus=()
+    if command -v systemctl >/dev/null 2>&1; then
+        liste="$(systemctl list-unit-files --no-legend 'arac*' 2>/dev/null)" && lu=1
+        while read -r nom _; do
+            [[ "$nom" == arac* && "$nom" != "$PREFIXE_UNITE"* ]] && vus["$nom"]=1
+        done <<<"$liste"
+    fi
+    for d in /etc/systemd/system /lib/systemd/system /usr/lib/systemd/system; do
+        [[ -d "$d" && -r "$d" ]] || continue
+        lu=1
+        for nom in "$d"/arac*; do
+            [[ -e "$nom" ]] || continue
+            nom="${nom##*/}"
+            [[ "$nom" != "$PREFIXE_UNITE"* ]] && vus["$nom"]=1
+        done
+    done
+    (( lu )) || { printf 'inconnu'; return; }
+    n=${#vus[@]}
+    printf '%s' "$n"
+}
+
+#: 1 si quelque chose écoute sur 8000 (API) ou 8100 (cockpit) — ou si on ne
+#: sait pas regarder (dans le doute, la production existe) —, 0 sinon.
+api_production_ecoute() {
+    command -v ss >/dev/null 2>&1 || { printf '1'; return; }
+    if [[ -n "$(ss -ltnH 'sport = :8000' 2>/dev/null)$(ss -ltnH 'sport = :8100' 2>/dev/null)" ]]; then
+        printf '1'
+    else
+        printf '0'
+    fi
+}
+
+#: Y a-t-il un cluster sur le 5432 ? 0 oui · 1 non · 2 on ne sait pas dire.
+cluster_5432() {
+    command -v pg_lsclusters >/dev/null 2>&1 || return 2
+    local liste; liste="$(pg_lsclusters -h 2>/dev/null)"
+    awk '$3==5432 {t=1} END{exit !t}' <<<"$liste" && return 0
+    return 1
+}
+
+#: Compte une requête sur le 5432 : un nombre, ou « inconnu ».
+#: Pas de cluster sur le 5432 → 0 (nulle part où vivre). Illisible → inconnu.
+compte_sur_5432() { # requete
+    local n rc=0
+    cluster_5432 || rc=$?
+    (( rc == 1 )) && { printf '0'; return; }
+    n="$(sql_prod postgres "$1")"
+    [[ "$n" =~ ^[0-9]+$ ]] && printf '%s' "$n" || printf 'inconnu'
+}
+
+#: absente | presente | inconnue — TOUTE base autre que postgres/template*
+#: sur le 5432 : la base d'un cerveau porte le nom du cerveau, pas `arac`.
+base_production() {
+    local n
+    n="$(compte_sur_5432 "SELECT count(*) FROM pg_database WHERE datname NOT IN ('postgres','template0','template1')")"
+    case "$n" in 0) printf 'absente' ;; inconnu) printf 'inconnue' ;; *) printf 'presente' ;; esac
+}
+
+#: Nombre de rôles `arac%` sur le 5432 (les rôles sont globaux au cluster), ou « inconnu ».
+roles_arac_sur_5432() {
+    compte_sur_5432 "SELECT count(*) FROM pg_roles WHERE rolname LIKE 'arac%'"
+}
+
 preuve_production() { # moment
-    local moment="$1" souci=0 valeur
+    local moment="$1" souci=0 valeur etat unites ecoute base roles
+
+    unites="$(unites_arac_installees)"
+    ecoute="$(api_production_ecoute)"
+    base="$(base_production)"
+    roles="$(roles_arac_sur_5432)"
+    etat="$(etat_initial_production "$unites" "$ecoute" "$base" "$roles")"
+
     titre "La production est-elle intacte ? ($moment)"
 
-    valeur="$(systemctl is-active arac-api.service arac-control-center.service 2>&1 | tr '\n' ' ')"
-    if [[ "$valeur" == "active active "* ]]; then
-        ok "services de production      $valeur"
-    else
-        ko "services de production      $valeur (attendu : active active)"; souci=1
+    if [[ "$moment" == "avant" ]]; then
+        ETAT_PROD_AVANT="$etat"
+    elif [[ "$ETAT_PROD_AVANT" == "vierge" && "$etat" != "vierge" ]]; then
+        # Symétrie : une machine vierge doit le rester. Une production qui
+        # apparaît (unité, port, base) est un reste du test, pas une production.
+        ko "production absente au départ, présente après (unités : $unites · ports écoutés : $ecoute · base : $base · rôles : $roles)"
+        souci=1
     fi
 
-    valeur="$(curl -s -o /dev/null -m 5 -w '%{http_code}' http://127.0.0.1:8000/healthz 2>/dev/null)"
-    if [[ "$valeur" == "200" ]]; then
-        ok "sonde de l'API (8000)       $valeur"
+    if [[ "$etat" == "vierge" ]]; then
+        ok "machine vierge              aucune unité arac*, rien sur le 8000 ni le 8100, aucune base ni rôle de cerveau sur le 5432 — état initial valide"
     else
-        ko "sonde de l'API (8000)       $valeur (attendu : 200)"; souci=1
-    fi
+        valeur="$(systemctl is-active arac-api.service arac-control-center.service 2>&1 | tr '\n' ' ')"
+        if [[ "$valeur" == "active active "* ]]; then
+            ok "services de production      $valeur"
+        else
+            ko "services de production      $valeur (attendu : active active)"; souci=1
+        fi
 
-    # `-d arac` n'est pas décoratif : sans lui, psql se connecte à la base
-    # `postgres` — où `arac.memory_atoms` n'existe pas. La requête rendait
-    # alors une chaîne vide, lue comme « production illisible », et ce test
-    # refusait de démarrer sur une machine parfaitement saine. Un contrôle
-    # qui crie au loup est un contrôle qu'on finit par désarmer.
-    valeur="$(sql_prod arac "SELECT count(*) FROM arac.memory_atoms")"
-    if [[ -n "$valeur" ]] && (( valeur >= 1914 )); then
-        ok "souvenirs en production     $valeur"
-    else
-        ko "souvenirs en production     ${valeur:-illisible} (attendu : ≥ 1914)"; souci=1
+        valeur="$(curl -s -o /dev/null -m 5 -w '%{http_code}' http://127.0.0.1:8000/healthz 2>/dev/null)"
+        if [[ "$valeur" == "200" ]]; then
+            ok "sonde de l'API (8000)       $valeur"
+        else
+            ko "sonde de l'API (8000)       $valeur (attendu : 200)"; souci=1
+        fi
+
+        # `-d arac` n'est pas décoratif : sans lui, psql se connecte à la base
+        # `postgres` — où `arac.memory_atoms` n'existe pas. La requête rendait
+        # alors une chaîne vide, lue comme « production illisible », et ce test
+        # refusait de démarrer sur une machine parfaitement saine. Un contrôle
+        # qui crie au loup est un contrôle qu'on finit par désarmer.
+        # Le seuil n'est le chiffre d'aucun cerveau : la référence est la
+        # mesure d'AVANT, et le nombre de souvenirs ne doit pas baisser.
+        valeur="$(sql_prod arac "SELECT count(*) FROM arac.memory_atoms")"
+        if [[ "$moment" == "avant" ]]; then
+            SOUVENIRS_AVANT="$valeur"
+            if [[ "$valeur" =~ ^[0-9]+$ ]]; then
+                ok "souvenirs en production     $valeur — référence"
+            else
+                ko "souvenirs en production     ${valeur:-illisible} (attendu : un nombre)"; souci=1
+            fi
+        elif souvenirs_n_ont_pas_baisse "$SOUVENIRS_AVANT" "$valeur"; then
+            ok "souvenirs en production     $valeur (avant : $SOUVENIRS_AVANT)"
+        else
+            ko "souvenirs en production     ${valeur:-illisible} (avant : ${SOUVENIRS_AVANT:-illisible} ; ne doit pas baisser)"; souci=1
+        fi
     fi
 
     valeur="$(empreinte_roles_production)"

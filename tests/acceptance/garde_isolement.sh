@@ -366,3 +366,54 @@ garde_cluster_absent() { # version nom
     fi
     return 0
 }
+
+# ===========================================================================
+# L'ÉTAT INITIAL DE LA MACHINE : VIERGE, OU PORTEUSE D'UNE PRODUCTION ?
+# ===========================================================================
+#
+# Le test d'acceptation commençait par exiger une production saine
+# (services actifs, API qui répond, souvenirs lisibles). Sur un exécuteur nu —
+# celui de la CI, ou la machine d'un inconnu — il n'y en a AUCUNE : le test
+# refusait donc de démarrer là où il est précisément censé prouver quelque
+# chose (« LA PRODUCTION N'EST PAS SAINE AVANT MÊME DE COMMENCER », code 3).
+#
+# Trois états, et un seul prédicat pour les séparer. Il est PUR (du texte en
+# entrée, un mot en sortie) pour pouvoir être exercé sans root ni production :
+#
+#   vierge    aucune unité `arac*` installée (hors celles de CE test), rien sur
+#             les ports 8000/8100, aucune base de cerveau ni aucun rôle `arac%`
+#             sur le cluster 5432. Seule cette conjonction donne un état
+#             initial « machine vierge » ; il est valide.
+#   presente  tout le reste. Une unité installée mais inactive, un port tenu,
+#             une base ou un rôle présents OU DONT ON NE SAIT PAS s'ils le
+#             sont : un cerveau existe peut-être (la production historique,
+#             ou un cerveau installé par le bootstrap public sous un autre
+#             nom). Il est protégé comme avant (sain → le test continue ;
+#             douteux → STOP).
+#
+# Dans le doute, « presente » : on ne devine jamais « vierge ».
+
+#: etat_initial_production <unites> <ecoute> <base> <roles>
+#:   unites   nombre d'unités arac* installées (0, 1, 2…) ou « inconnu »
+#:   ecoute   1 si quelque chose écoute sur 8000 ou 8100, 0 sinon
+#:   base     absente | presente | inconnue (bases de cerveau sur le 5432)
+#:   roles    nombre de rôles arac% sur le 5432, ou « inconnu »
+#: Écrit « vierge » ou « presente ». Toute valeur inattendue → « presente ».
+etat_initial_production() {
+    local unites="${1-}" ecoute="${2-}" base="${3-}" roles="${4-}"
+    if [[ "$unites" == "0" && "$ecoute" == "0" && "$base" == "absente" && "$roles" == "0" ]]; then
+        printf 'vierge\n'
+    else
+        printf 'presente\n'
+    fi
+    return 0
+}
+
+#: Le nombre de souvenirs a-t-il tenu entre avant et après ?
+#: 0 oui · 1 non, ou illisible. Aucun seuil personnel : la référence est la
+#: mesure d'AVANT, jamais le chiffre d'un cerveau particulier.
+souvenirs_n_ont_pas_baisse() { # avant apres
+    local avant="${1-}" apres="${2-}"
+    [[ "$avant" =~ ^[0-9]+$ && "$apres" =~ ^[0-9]+$ ]] || return 1
+    (( apres >= avant ))
+}
