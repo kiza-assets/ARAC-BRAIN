@@ -354,7 +354,7 @@ async def park_oversized_conversation(
     message_id: int,
     *,
     days: int = 7,
-) -> None:
+) -> int:
     """PARKING TEMPORAIRE d'une conversation dont un message dépasse le budget
     PLEIN : `next_retry_at = now() + days` pour qu'elle cesse de monopoliser un
     slot du gate (`ORDER BY min(msg_created_at)`).
@@ -369,6 +369,7 @@ async def park_oversized_conversation(
     signal humain).
 
     Clé = `conversation_uid` (et non `id`, contrairement aux autres writers).
+    Retourne `cur.rowcount` (0 = aucune ligne touchée : parking non appliqué).
     PAS DE COMMIT ICI (le caller committe).
     """
     err = _trunc_error(f"oversized_message:{message_id}")
@@ -380,6 +381,7 @@ async def park_oversized_conversation(
             "WHERE conversation_uid = %s",
             (days, err, conversation_uid),
         )
+        return cur.rowcount
 
 
 async def skip_tool_artifact_message(

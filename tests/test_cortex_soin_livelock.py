@@ -159,6 +159,7 @@ def _capture(monkeypatch):
 
     async def fake_park(conn, uid, mid, **k):
         parked.append((uid, mid))
+        return 1
 
     monkeypatch.setattr(cycle.review_queue, "insert_review_row", fake_insert)
     monkeypatch.setattr(cycle.curator_lib_v2, "park_oversized_conversation", fake_park)
@@ -226,6 +227,32 @@ async def test_prefixe_env_trop_court_refuse(monkeypatch):
     refused = [f for e, f in logs if e == "cortex.oversized_skip_prefix_refused"]
     assert [f["length"] for f in refused] == [4, 5]
     assert all(set(f) == {"length"} for f in refused)
+
+
+async def test_prefixe_env_trop_long_refuse(monkeypatch):
+    _, logs = _capture(monkeypatch)
+    long_p = "x" * 121
+    monkeypatch.setenv("ARAC_OVERSIZED_SKIP_PREFIXES", long_p + "|" + "y" * 120)
+    assert cycle._tool_artifact_prefixes() == ("y" * 120,)
+    refused = [f for e, f in logs if e == "cortex.oversized_skip_prefix_too_long"]
+    assert refused == [{"length": 121}]
+    assert "x" * 20 not in repr(logs)
+
+
+async def test_alerte_parking_seulement_si_ligne_touchee(monkeypatch):
+    _capture(monkeypatch)
+    for rows, attendu, absent in ((1, "parqué 7 j", "non appliqué"),
+                                  (0, "parking non appliqué", "parqué 7 j")):
+        async def fake_park(conn, uid, mid, _r=rows, **k):
+            return _r
+        monkeypatch.setattr(cycle.curator_lib_v2, "park_oversized_conversation", fake_park)
+        text = await cycle._record_oversized_messages(_Conn(), ONE, slot_key="s@k")
+        assert attendu in text and absent not in text
+
+
+async def test_park_oversized_conversation_retourne_rowcount():
+    conn = _Conn(rowcount=1)
+    assert await curator_lib_v2.park_oversized_conversation(conn, "conv-a", 101) == 1
 
 
 async def test_select_tete_limite_au_role_user(monkeypatch):

@@ -574,6 +574,9 @@ TOOL_ARTIFACT_PREFIXES: tuple[str, ...] = ("Base directory for this skill:",)
 
 
 _MIN_PREFIX_LEN = 12  # un préfixe trop court risquerait de sauter un vrai message
+# Longueur de la tête lue en base (`left(content, N)`) : un préfixe plus long ne
+# pourrait jamais correspondre, il est donc refusé explicitement.
+_MAX_PREFIX_LEN = 120
 
 
 def _prefix_fingerprint(prefix: str) -> str:
@@ -584,7 +587,7 @@ def _prefix_fingerprint(prefix: str) -> str:
 
 def _tool_artifact_prefixes() -> tuple[str, ...]:
     """Préfixes reconnus : env `ARAC_OVERSIZED_SKIP_PREFIXES` (séparateur `|`),
-    vide/absent = `TOOL_ARTIFACT_PREFIXES`. Préfixe < 12 caractères refusé."""
+    vide/absent = `TOOL_ARTIFACT_PREFIXES`. Préfixe < 12 ou > 120 caractères refusé."""
     raw = os.environ.get("ARAC_OVERSIZED_SKIP_PREFIXES", "").strip()
     parsed = []
     for p in (x.strip() for x in raw.split("|")):
@@ -592,6 +595,9 @@ def _tool_artifact_prefixes() -> tuple[str, ...]:
             continue
         if len(p) < _MIN_PREFIX_LEN:
             _log("cortex.oversized_skip_prefix_refused", length=len(p))
+            continue
+        if len(p) > _MAX_PREFIX_LEN:
+            _log("cortex.oversized_skip_prefix_too_long", length=len(p))
             continue
         parsed.append(p)
     return tuple(parsed) or TOOL_ARTIFACT_PREFIXES
@@ -627,6 +633,7 @@ async def _record_oversized_messages(
     contenu brut).
     """
     skipped_ids: set[tuple[str, int]] = set()
+    parked_ids: set[tuple[str, int]] = set()
     for om in oversized:
         # Dédoublonnage : une seule ligne `pending` par (conversation, message)
         # — sinon 1 INSERT par run pour le même message.
@@ -652,9 +659,9 @@ async def _record_oversized_messages(
         # Artefact d'outillage reconnu : saut du seul message (curseur), sans parking.
         async with conn.cursor() as cur:
             await cur.execute(
-                "SELECT left(content, 120) FROM arac.raw_messages "
+                "SELECT left(content, %s) FROM arac.raw_messages "
                 "WHERE id = %s AND role = 'user'",
-                (om["message_id"],),
+                (_MAX_PREFIX_LEN, om["message_id"]),
             )
             head_row = await cur.fetchone()
         head = (head_row[0] or "").lstrip() if head_row else ""
@@ -683,14 +690,21 @@ async def _record_oversized_messages(
                  uid=om["uid"], message_id=om["message_id"],
                  prefix_sha=_prefix_fingerprint(matched))
         # Parking : la conversation ne monopolise plus le gate (curseur intouché).
-        await curator_lib_v2.park_oversized_conversation(
+        parked_rows = await curator_lib_v2.park_oversized_conversation(
             conn, om["uid"], om["message_id"])
+        if isinstance(parked_rows, int) and parked_rows >= 1:
+            parked_ids.add((om["uid"], om["message_id"]))
+        else:
+            _log("cortex.oversized_park_not_applied",
+                 uid=om["uid"], message_id=om["message_id"])
     items = " ; ".join(
         f"conversation={om['uid']} message_id={om['message_id']} "
         f"~{om['est_tokens']} tokens ({om['chars']} chars) "
         + ("sauté (artefact d'outillage, curseur avancé)"
            if (om["uid"], om["message_id"]) in skipped_ids
-           else "parqué 7 j (curseur gelé)")
+           else "parqué 7 j (curseur gelé)"
+           if (om["uid"], om["message_id"]) in parked_ids
+           else "parking non appliqué")
         for om in oversized
     )
     return (f"🧠📦 ARAC cortex : {len(oversized)} message(s) surdimensionné(s) "

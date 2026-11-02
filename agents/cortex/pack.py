@@ -304,33 +304,6 @@ def _pack_fill_floor() -> int:
     return val
 
 
-def _pack_max_msgs_per_conv() -> int:
-    """Plafond de messages FETCHÉS par tranche/conversation (env
-    `ARAC_PACK_MAX_MSGS_PER_CONV`) — lu à CHAQUE build (jamais figé à
-    l'import), miroir du pattern `_pack_max_convs`. 0 (défaut) = illimité =
-    comportement bit-identique. Cible la taille de la tranche d'une
-    conversation géante (plusieurs centaines de messages d'une même
-    conversation dans un pack) plutôt que le nombre de conversations.
-    Fail-safe : valeur illisible ou négative -> 0 + WARNING, jamais un
-    crash de cycle."""
-    raw = os.environ.get("ARAC_PACK_MAX_MSGS_PER_CONV", "").strip()
-    if not raw:
-        return 0
-    try:
-        val = int(raw)
-    except ValueError:
-        logger.warning(
-            "ARAC_PACK_MAX_MSGS_PER_CONV invalide (%r) — fallback 0 "
-            "(illimité)", raw)
-        return 0
-    if val < 0:
-        logger.warning(
-            "ARAC_PACK_MAX_MSGS_PER_CONV négatif (%d) — fallback 0 "
-            "(illimité)", val)
-        return 0
-    return val
-
-
 def _pack_recency_slots() -> int:
     """Places du pack réservées au contenu le plus RÉCENT (env
     `ARAC_PACK_RECENCY_SLOTS`) — lu à CHAQUE build (jamais figé à
@@ -969,10 +942,6 @@ async def build_pack(
     #     pack.py rendait `## conversation` alors que les convs de
     #     self-capture contiennent des packs cortex antérieurs).
     max_convs = _pack_max_convs()
-    # Plafond de messages par tranche/conversation (env
-    # `ARAC_PACK_MAX_MSGS_PER_CONV`, défaut 0 = illimité = bit-identique) —
-    # cf `_pack_max_msgs_per_conv`.
-    max_msgs_per_conv = _pack_max_msgs_per_conv()
     strict_boundaries = _env_flag("ARAC_PACK_STRICT_BOUNDARIES")
     # perf-loop it.2 (flag OFF par défaut, cf commentaire de
     # `RECOMMENDED_PACK_FILL_FLOOR`) : seuil de `remaining` déclenchant le
@@ -1000,20 +969,14 @@ async def build_pack(
     # atteintes (rang >= cap+1), les vrais géants du diagnostic.
     seen_conv_ids: set[Any] = set()
 
-    def _admit_tranche(conv: dict[str, Any], rows: list[dict[str, Any]],
-                        *, msg_cap_truncated: bool = False) -> str:
+    def _admit_tranche(conv: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         """Admet AU PLUS UNE tranche `[cursor+1 .. budget]` de `conv`
-        (`rows` = delta non curé DÉJÀ fetché, déjà tronqué par l'appelant à
-        `ARAC_PACK_MAX_MSGS_PER_CONV` messages le cas échéant). Mute l'état du pack en cours de
+        (`rows` = delta non curé DÉJÀ fetché). Mute l'état du pack en cours de
         construction (`pack_meta`/`presented`/`sections` + `remaining`/
         `messages_reported`/`oversized_messages`). Logique EXTRAITE mot-pour-
         mot de la boucle d'admission historique it.1, partagée avec le secours
         Flag OFF par défaut : le seul appelant est la boucle principale, et la
         sémantique reste bit-identique.
-        `msg_cap_truncated` : True quand `rows` a été coupé au plafond de
-        messages (il existe encore du delta au-delà de `rows[-1]`) — force
-        `fully_presented=False` (même chemin que la troncature au budget) et,
-        sous `ARAC_PACK_STRICT_BOUNDARIES`, le même avis de troncature.
         Retourne :
           - "stop"     : le scaffold seul dépasse le restant ET le pack n'est
                          pas vide -> l'appelant DOIT rompre sa boucle ;
@@ -1121,8 +1084,6 @@ async def build_pack(
             "max_id": max(covered_ids),
             "n_msgs": len(covered_ids),
         })
-        fully_presented = (not msg_cap_truncated
-                           and covered_ids[-1] == int(rows[-1]["id"]))
         presented[uid] = {
             "conversation_id": conv["id"],
             "max_id": max(covered_ids),
@@ -1139,23 +1100,22 @@ async def build_pack(
             # la tranche couvre-t-elle TOUT le delta
             # non curé de la conversation ? True ssi le dernier id COUVERT
             # est le dernier id du delta (pas de coupure budget, pas de
-            # plafond `ARAC_PACK_MAX_MSGS_PER_CONV`, pas de report, pas
-            # d'oversized — ces deux derniers cas sortent la
+            # report, pas d'oversized — ces deux derniers cas sortent la
             # conversation du pack plus haut). Le disposant en a besoin
             # pour distinguer « omise alors que PLEINEMENT présentée »
             # (low-yield, drain traçé) de « omise car tranche TRONQUÉE »
             # (géant > budget : l'omission ne prouve rien -> backoff,
             # jamais park).
-            "fully_presented": fully_presented,
+            "fully_presented": covered_ids[-1] == int(rows[-1]["id"]),
         }
         if strict_boundaries:
             # assemblage fencé — avis de troncature si la tranche est
-            # coupée au budget en plein flux ou par le plafond de messages
-            # (même prédicat que `fully_presented`), puis footer répétant
-            # l'uid. Rendu SEUL : `presented`/`pack_meta` (les entrées du
-            # guard) sont identiques flag ON/OFF.
+            # coupée au budget en plein flux (même prédicat que
+            # `fully_presented`), puis footer répétant l'uid. Rendu SEUL :
+            # `presented`/`pack_meta` (les entrées du guard) sont identiques
+            # flag ON/OFF.
             body = [header] + tranche
-            if not fully_presented:
+            if covered_ids[-1] != int(rows[-1]["id"]):
                 body.append(_strict_trunc_notice(covered_ids[-1]))
             body.append(footer)
             sections.append("\n".join(body))
@@ -1179,23 +1139,12 @@ async def build_pack(
             # le secours (post-boucle) pourra en admettre UNE si beaucoup de
             # budget reste abandonné (drained-short) — jamais plus.
             break
-        if max_msgs_per_conv:
-            # Fetch `cap + 1` : un fetch de `cap` messages ne permettrait
-            # jamais de distinguer « le delta fait exactement cap messages »
-            # (fully_presented) de « il en reste au moins un au-delà »
-            # (tranche à marquer tronquée).
-            rows = await curator_lib_v2.fetch_uncurated_messages(
-                db, conv["id"], conv["cursor"], limit=max_msgs_per_conv + 1)
-        else:
-            rows = await curator_lib_v2.fetch_uncurated_messages(
-                db, conv["id"], conv["cursor"])
+        rows = await curator_lib_v2.fetch_uncurated_messages(
+            db, conv["id"], conv["cursor"])
         seen_conv_ids.add(conv["id"])
         if not rows:
             continue
-        capped = bool(max_msgs_per_conv) and len(rows) > max_msgs_per_conv
-        if capped:
-            rows = rows[:max_msgs_per_conv]
-        if _admit_tranche(conv, rows, msg_cap_truncated=capped) == "stop":
+        if _admit_tranche(conv, rows) == "stop":
             break
 
     # perf-loop it.2 — SECOURS « géant de secours » (H-C), flag OFF par
@@ -1211,33 +1160,24 @@ async def build_pack(
     # -> guard INTOUCHÉ.
     if (fill_floor and max_convs and len(pack_meta) >= max_convs
             and remaining >= fill_floor):
-        rescue_pool: list[tuple[dict[str, Any], list[dict[str, Any]], bool, int]] = []
+        rescue_pool: list[tuple[dict[str, Any], list[dict[str, Any]], int]] = []
         for conv in candidates:
             if conv["id"] in seen_conv_ids:
                 continue
-            if max_msgs_per_conv:
-                rows = await curator_lib_v2.fetch_uncurated_messages(
-                    db, conv["id"], conv["cursor"],
-                    limit=max_msgs_per_conv + 1)
-            else:
-                rows = await curator_lib_v2.fetch_uncurated_messages(
-                    db, conv["id"], conv["cursor"])
+            rows = await curator_lib_v2.fetch_uncurated_messages(
+                db, conv["id"], conv["cursor"])
             seen_conv_ids.add(conv["id"])
             if not rows:
                 continue
-            capped = bool(max_msgs_per_conv) and len(rows) > max_msgs_per_conv
-            if capped:
-                rows = rows[:max_msgs_per_conv]
-            rescue_pool.append(
-                (conv, rows, capped, _renderable_delta_tokens(rows)))
+            rescue_pool.append((conv, rows, _renderable_delta_tokens(rows)))
         # « plus gros delta dispo » d'abord (tri stable : à delta égal, l'ordre
         # du gate/interleave est conservé). On tente d'admettre le premier
         # qui produit une tranche puis on ARRÊTE : le secours est UNE conv, une
         # tranche. Un candidat non admis (oversized / report) est légitimement
         # tracé (rang >= cap+1 jamais vu jusqu'ici) et on passe au suivant.
-        rescue_pool.sort(key=lambda t: t[3], reverse=True)
-        for conv, rows, capped, _delta in rescue_pool:
-            if _admit_tranche(conv, rows, msg_cap_truncated=capped) == "admitted":
+        rescue_pool.sort(key=lambda t: t[2], reverse=True)
+        for conv, rows, _delta in rescue_pool:
+            if _admit_tranche(conv, rows) == "admitted":
                 break
 
     known_block = await _known_atoms_block(db, [p["uid"] for p in pack_meta])

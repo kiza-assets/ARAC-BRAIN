@@ -582,6 +582,16 @@ def validate_document(
         if isinstance(c, dict) and isinstance(c.get("conversation_uid"), str)
     }
     seen_uids: set[str] = set()
+    # Clés d'atome BRUTES conformes déjà présentes dans le document (ordre
+    # indifférent) + clés issues d'une normalisation : une normalisation qui
+    # recréerait une de ces clés est refusée (key_invalid, comme avant).
+    taken_keys: set[str] = set()
+    normalized_keys: set[str] = set()
+    for _c in (doc.get("conversations") if isinstance(doc.get("conversations"), list) else []):
+        for _a in (_c.get("atoms") if isinstance(_c, dict) and isinstance(_c.get("atoms"), list) else []):
+            _k = _a.get("key") if isinstance(_a, dict) else None
+            if isinstance(_k, str) and _KEY_PATTERN.match(_k):
+                taken_keys.add(_k)
 
     for i, conv in enumerate(conversations):
         prefix = f"conversations[{i}]"
@@ -742,6 +752,8 @@ def validate_document(
                 pack_entry=pack_entry,
                 conv_uid=uid,
                 run_ref=expected_run_ref,
+                taken_keys=taken_keys,
+                normalized_keys=normalized_keys,
             )
             errors.extend(atom_errors)
             stripped_fields_count += n_stripped
@@ -821,6 +833,8 @@ def _validate_atom(
     pack_entry: dict | None,
     conv_uid: object,
     run_ref: str = "",
+    taken_keys: frozenset[str] | set[str] = frozenset(),
+    normalized_keys: set[str] | None = None,
 ) -> tuple[dict | None, list[str], int, list[int]]:
     """Valide un atome individuel.
 
@@ -846,7 +860,13 @@ def _validate_atom(
     key = atom.get("key")
     if not isinstance(key, str) or not _KEY_PATTERN.match(key):
         normalized = normalize_atom_key(key) if isinstance(key, str) else ""
-        if normalized and _KEY_PATTERN.match(normalized):
+        if normalized and (normalized in taken_keys
+                           or (normalized_keys is not None
+                               and normalized in normalized_keys)):
+            # Collision : la clé normalisée est déjà portée (brute ou normalisée)
+            # par un autre atome du document -> pas de normalisation.
+            errors.append(f"{prefix}.key_invalid:{key!r}")
+        elif normalized and _KEY_PATTERN.match(normalized):
             # Clé récupérable (majuscules/accents/séparateurs) : on l'utilise
             # plutôt que de quarantiner le run entier.
             raw_sha8 = _sha8(key)
@@ -854,6 +874,8 @@ def _validate_atom(
                  run_ref=run_ref, conversation_uid=conv_uid, atom_path=prefix,
                  raw_sha8=raw_sha8, normalized_sha8=_sha8(normalized))
             key = normalized
+            if normalized_keys is not None:
+                normalized_keys.add(normalized)
         else:
             errors.append(f"{prefix}.key_invalid:{key!r}")
 

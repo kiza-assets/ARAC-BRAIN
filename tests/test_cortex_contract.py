@@ -245,6 +245,28 @@ def test_validate_key_accentuee_normalisee_avec_warning(caplog):
                for r in caplog.records)
 
 
+def test_validate_key_normalisee_en_collision_refusee():
+    # « A_B » se normaliserait en « a-b », déjà porté par un autre atome du
+    # même document : pas de normalisation, key_invalid comme avant.
+    doc = _doc(conversations=[
+        {"conversation_uid": "conv-1",
+         "atoms": [_atom(key="A_B"), _atom(key="a-b")], "skips": []}
+    ])
+    with pytest.raises(ContractError) as exc:
+        validate_document(doc, expected_run_ref=RUN_REF, presented=_presented(**{"conv-1": [1, 2, 3]}))
+    assert len([e for e in exc.value.errors if "key_invalid" in e]) == 1
+
+
+def test_validate_deux_cles_brutes_vers_meme_normalisee_refusees():
+    doc = _doc(conversations=[
+        {"conversation_uid": "conv-1",
+         "atoms": [_atom(key="A_B"), _atom(key="a b")], "skips": []}
+    ])
+    with pytest.raises(ContractError) as exc:
+        validate_document(doc, expected_run_ref=RUN_REF, presented=_presented(**{"conv-1": [1, 2, 3]}))
+    assert len([e for e in exc.value.errors if "key_invalid" in e]) == 1
+
+
 def test_validate_value_trop_longue():
     doc = _doc(conversations=[
         {"conversation_uid": "conv-1", "atoms": [_atom(value="x" * 6001)], "skips": []}
