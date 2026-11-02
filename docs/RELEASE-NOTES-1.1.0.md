@@ -19,7 +19,13 @@
   Voir [`DEPANNAGE.md`](DEPANNAGE.md) « Les cycles sortent vides en boucle ».
 - **Sécurité : le jeton du bot d'alerte n'est plus écrit dans les journaux.** Si vos
   journaux antérieurs ont été conservés ou partagés, renouvelez ce jeton.
-- **CI** : les deux workflows ont été réparés pour un exécuteur nu.
+- **L'installation marche sur une machine neuve — et c'est observé.** pgvector 0.7.0 au
+  moins est exigé dès le début (Ubuntu 24.04 livre 0.6.0 : le remède active le dépôt
+  PGDG, voir [`INSTALLATION.md`](INSTALLATION.md)) ; le test d'acceptation accepte une
+  machine vierge. Sur un exécuteur GitHub nu, huit des neuf étapes sont **PROUVÉES**, de
+  l'installation à la désinstallation ; la neuvième (« voir son cerveau apprendre ») reste
+  partielle sans clé, comme prévu.
+- **CI** : les deux workflows sont verts sur GitHub.
 - **Feuille de route** : [`ROADMAP.md`](ROADMAP.md) gagne « cap après 1.1 : la confiance
   dans la mémoire » (PROSPECTIF).
 
@@ -36,7 +42,7 @@ Aucune migration de base. Aucun réglage nouveau n'est obligatoire.
 
 - Le SQL de saut et de mise de côté, et le relâchement de la bisection, n'ont été joués que
   par des tests hermétiques : **écrit, non exercé** sur une base réelle.
-- Le premier passage vert de la CI sur GitHub n'est pas encore observé.
+- « Voir son cerveau apprendre » n'est prouvé qu'avec une clé de curation ; la CI n'en a pas.
 - Les limites de la 1.0.0 restent valables : [`LIMITES-CONNUES.md`](LIMITES-CONNUES.md).
 
 Le détail, ligne par ligne : [`CHANGELOG.md`](../CHANGELOG.md).

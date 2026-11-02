@@ -19,8 +19,8 @@
 # l'encodage tiktoken absent du cache d'un exécuteur nu (voir l'étape
 # « encodage tiktoken »), et un Python installé hors de /usr (voir
 # tests/test_la_porte_du_sous_processus_est_fermee.py). Les correctifs sont dans
-# le dépôt ; le premier passage vert est attendu au prochain push, et n'est pas
-# encore observé.
+# le dépôt, et le passage vert est OBSERVÉ depuis le 2026-11-02 (runs
+# 41543687564 et 41548291884).
 # ============================================================================
 
 name: tests

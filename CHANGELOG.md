@@ -70,8 +70,24 @@ puis redémarrage des services du curateur ; aucune migration.
   jetable (le `conftest` importe le moteur dès la collecte) ; le workflow des tests remplit
   le cache de l'encodage tiktoken avant la suite, qui compte toujours avec le vrai
   encodage ; deux tests de la porte du sous-processus déclarent la lecture des binaires de
-  l'hôte sur un Python installé hors de `/usr`. Les en-têtes des workflows disent ce qui a
-  tourné. **Non observé** : aucun passage vert sur GitHub n'est encore constaté.
+  l'hôte sur un Python installé hors de `/usr`. **Observé** : `tests` vert sur GitHub
+  (runs 41543687564 et 41548291884).
+- **Le test d'acceptation accepte une machine vierge.** Il exigeait une production saine
+  avant de commencer — impossible sur un exécuteur nu, c'est-à-dire chez un inconnu. Une
+  machine sans unité `arac*`, sans port 8000/8100 tenu, sans base de cerveau ni rôle `arac%`
+  est désormais un état initial valide ; tout cerveau présent, y compris installé par le
+  bootstrap public sous un autre nom, reste protégé comme avant (dans le doute : présent).
+  Le seuil fixe de souvenirs est remplacé par la mesure d'avant, qui ne doit pas baisser.
+- **pgvector 0.7.0 au moins, exigé dès le début.** Le schéma emploie `halfvec` (pgvector
+  ≥ 0.7.0) ; Ubuntu 24.04 livre 0.6.0, que le bootstrap acceptait avant d'échouer à la
+  première migration (« type "halfvec" does not exist »). Le minimum est vérifié aux
+  étapes 1 et 4, et le remède imprimé active le dépôt PGDG. Documenté dans INSTALLATION,
+  DÉMARRAGE-RAPIDE et DÉPANNAGE.
+- **Observé : un inconnu installe son cerveau.** Le workflow `acceptation`, sur un
+  exécuteur GitHub nu (run 41548302432) : cloner, suivre la documentation, installer,
+  créer son cerveau, synchroniser, utiliser le cockpit, prouver sa sauvegarde et
+  désinstaller sont **PROUVÉS** ; « voir son cerveau apprendre » reste **PARTIEL** —
+  sans clé, la chaîne s'arrête à la frontière de dépense, comme prévu.
 - Un réglage de plafond de messages par conversation a été ajouté puis **retiré avant
   publication** (il pouvait perdre des messages en silence) : il n'existe pas dans cette
   version.
@@ -91,7 +107,7 @@ puis redémarrage des services du curateur ; aucune migration.
 - Un parking de 7 jours peut être écrasé par tout autre écrivain de `next_retry_at`, et sort
   la conversation du backlog « actionnable » du watchdog pendant ce temps ; la ligne de la
   file de revue reste le signal humain.
-- Le premier passage vert de la CI publique n'est pas encore observé.
+- L'étape « voir son cerveau apprendre » n'est prouvée qu'avec une clé : la CI n'en a pas.
 - Les limites de la 1.0.0 demeurent : [`docs/LIMITES-CONNUES.md`](docs/LIMITES-CONNUES.md).
 
 ---

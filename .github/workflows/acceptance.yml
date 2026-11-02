@@ -35,8 +35,11 @@
 # machine sans unité `arac*`, sans port 8000/8100 tenu, sans base de cerveau ni
 # rôle `arac%` sur le 5432 est un état initial « vierge » valide ; tout cerveau
 # présent (historique ou installé par le bootstrap public) reste gardé comme
-# avant. Le passage complet de cette étape n'a PAS encore été observé sur
-# GitHub. Si un passage échoue plus loin, c'est ici qu'il faut regarder.
+# avant. Ensuite, le bootstrap tombait sur pgvector 0.6.0 (dépôt Ubuntu ; il
+# faut ≥ 0.7.0 pour halfvec) : l'étape des prérequis active donc PGDG. Passage
+# complet OBSERVÉ le 2026-11-02 (run 41548302432) : huit étapes PROUVÉES, la
+# sixième PARTIELLE faute de clé, comme prévu. Si un passage échoue plus tard,
+# c'est ici qu'il faut regarder.
 #
 # CE QU'IL NE FAIT PAS : dépenser. Aucune clé n'est fournie, donc l'étape 6
 # rend « PARTIEL » en nommant ce qu'elle n'a pas pu prouver. Une CI qui aurait
