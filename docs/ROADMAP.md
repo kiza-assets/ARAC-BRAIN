@@ -387,6 +387,169 @@ quelque chose qui n'arrivera pas :
 
 ---
 
+## Cap après 1.1 : la confiance dans la mémoire
+
+**Statut : cap, pas engagement. Tout ce qui est marqué PROSPECTIF n'existe pas.**
+
+Les sections 1 à 6 disent ce qui manque. Celle-ci dit **vers quoi** le projet veut aller
+une fois le pont de vocabulaire (§1.1) refermé : une mémoire dont on peut **vérifier**
+pourquoi elle rend ce qu'elle rend, pas seulement une mémoire qui retrouve. Elle ne
+recopie pas §2 ni [`LIMITES-CONNUES.md`](LIMITES-CONNUES.md) : elle y renvoie, et
+n'ajoute que ce qu'ils ne portent pas.
+
+### Quatre principes
+
+1. **La similarité sélectionne des candidats, elle ne tranche pas.** Une ressemblance de
+   vecteurs dit « regardez ceci », jamais « ceci contredit cela » ni « ceci est la même
+   chose ». `semantic_neighbor` est déjà déclarée *inférée* (§2.1) ; tout futur détecteur
+   garde cette frontière : il propose, un verdict explicite dispose.
+2. **Aucune connaissance n'est effacée en silence.** Remplacer, contester, archiver : trois
+   gestes qui laissent une trace lisible. Un souvenir qui sort du rappel sans que personne
+   ne l'ait dit est un défaut, pas un réglage (voir `W-008`, en 1.C).
+3. **Le benchmark publie aussi les cas où ARAC perd.** Un score qui ne montre que les
+   réussites est une publicité. Les requêtes où le rappel échoue entrent au même rang que
+   les autres.
+4. **La documentation ne vaut pas preuve.** Chaque « fait » de ce cap a un critère
+   exécutable : un test, ou une mesure du banc d'évaluation. Sans lui, la ligne reste
+   PROSPECTIF, quelle que soit la qualité de la prose.
+
+Pour chaque chantier : l'**état constaté** dans le code public (`chemin:ligne`), ce qui est
+**visé**, et le critère de « fait ».
+Les trois états : **EXISTE** (le code est là et branché), **PARTIEL** (une pièce existe,
+l'ensemble non), **ABSENT** (rien).
+
+### Phase 1 — Fiabilité
+
+**1.A Détecter les contradictions — PARTIEL.** *Constaté :* le verdict `DISPUTED`
+(`agents/curator/gate.py:47`) et le paramètre `contradiction` (`agents/curator/gate.py:135`)
+existent ; aucun appelant ne le renseigne (§2.2). *Visé, **PROSPECTIF** :* un détecteur qui
+tire ses candidats du voisinage déjà calculé et laisse un verdict explicite, jamais une
+suppression. *Fait quand :* un test pose deux atomes de même clé aux valeurs opposées et
+constate que le second est visible, non promu, et que le premier reste actif.
+
+**1.B Des statuts qui disent l'état réel — PARTIEL.** *Constaté :* `Status` ne connaît que
+`active`, `draft`, `superseded`, `archived`, `low_confidence_archive`
+(`app/schemas/atom.py:46-53`) ; la supersession est servie par
+`app/routers/atoms.py:1686` et sa chaîne par `app/routers/atoms.py:1255`
+(`LineageRead`, `app/schemas/atom.py:571`). Il n'existe pas de statut « contesté ».
+*Visé, **PROSPECTIF** :* un état « contesté » et un état « à revoir », distincts d'archivé.
+*Fait quand :* la contrainte de base et l'énumération s'accordent, et un test échoue si
+l'une change sans l'autre.
+
+**1.C Rien ne sort du rappel sans avertissement — PARTIEL.** *Constaté :* `W-008` prévient
+quand un atome naît hors du rappel (`app/routers/atoms.py:594-628`) ; la limite qu'il ne
+couvre pas est décrite dans [`LIMITES-CONNUES.md`](LIMITES-CONNUES.md) §1.3. *Visé,
+**PROSPECTIF :*** la même vigilance pour tout changement d'état qui retire un atome du
+rappel. *Fait quand :* un test énumère les transitions d'état et exige un avertissement ou
+une trace pour chacune.
+
+**1.D Provenance et fraîcheur — ABSENT (fraîcheur) / PARTIEL (provenance).** *Constaté :*
+`last_verified_at` et `confirmed_until` existent
+(`db/alembic/versions/0013_business_memory.py:74-75`) et rien ne les alimente
+([`LIMITES-CONNUES.md`](LIMITES-CONNUES.md) §1.5) ; le gate sait rendre `BLOCKED` sur une provenance manquante
+(`agents/curator/gate.py:45`, `:118`). Le détail est en §2.3 et §2.4, non répété ici.
+*Visé, **PROSPECTIF** :* ces deux dates alimentées par un geste explicite. *Fait quand :*
+un test constate qu'un atome revérifié change de date, et qu'un atome jamais revérifié est
+rendu comme tel.
+
+### Phase 2 — Preuves
+
+**2.A Un banc d'évaluation qui montre aussi les échecs — PARTIEL.** *Constaté :*
+`tests/evals/run_eval.py:77` agrège rappel@k, MRR, taux de provenance et taux de
+supersédés ; `tests/evals/queries.json` contient une catégorie `anti-hallucination`
+(ligne 21) ; `tests/evals/baseline.json` est volontairement vide tant que vous n'avez pas
+mesuré. La suite vérifie les fonctions pures (`tests/test_eval_scoring.py`), pas un rappel
+réel. *Visé, **PROSPECTIF** :* un jeu de requêtes public, des résultats publiés par
+requête, **y compris celles où le rappel échoue**, et une comparaison à une base de
+référence triviale. *Fait quand :* le banc imprime la liste des requêtes perdues, pas
+seulement une moyenne.
+
+**2.B La confiance entre dans le rappel — ABSENT.** *Constaté :* le score n'entre pas dans
+le calcul ; le module qui le pondérerait (`app/services/context_router.py:96`) n'est
+importé par aucune route servie ([`LIMITES-CONNUES.md`](LIMITES-CONNUES.md) §1.2).
+*Visé, **PROSPECTIF** :* une pondération optionnelle, mesurée contre 2.A avant d'être
+proposée par défaut. *Fait quand :* le banc montre, chiffres du dépôt à l'appui, que la
+pondération ne dégrade pas le rappel — ou dit qu'elle le dégrade.
+
+**2.C Expliquer pourquoi un souvenir est rendu — PARTIEL.** *Constaté :* le cockpit
+reconstitue l'histoire d'un atome (`control_center/cc_v1/lifestory.py:607`) et la lignée est
+servie par l'API (`app/routers/atoms.py:1255`) ; les arêtes `atom_links` ne sont lues par
+aucune route de rappel (§2.1, `app/services/atom_links.py:355`). *Visé, **PROSPECTIF** :*
+chaque résultat de rappel porte ce qui l'a fait choisir (distance, statut, lignée,
+voisins). *Fait quand :* un test vérifie que la réponse d'un rappel contient ces champs.
+
+### Phase 3 — Accessibilité
+
+**3.A Une file de revue qu'un humain peut vider — PARTIEL.** *Constaté :* la table
+`arac.memory_review_queue` est créée par `db/alembic/versions/0034_memory_review_queue.py`,
+alimentée par `agents/cortex/review_queue.py:94` et comptée par le cockpit
+(`control_center/collectors/db_metrics.py:214`). Le cockpit n'écrit pas
+([`LIMITES-CONNUES.md`](LIMITES-CONNUES.md) §1.6) ; la validation n'est branchée nulle part
+(§2.4). *Visé, **PROSPECTIF** :* un geste de validation hors cockpit, qui fait passer
+un atome de `agent_suggest` à `auditor_validated` (`app/schemas/atom.py:60-61`). *Fait
+quand :* un test parcourt le geste de bout en bout sur une base de test.
+
+**3.B Une installation en conteneur — ABSENT.** *Constaté :* aucun `Dockerfile` ni fichier
+compose à la racine ; [`FAQ.md`](FAQ.md) et §6 refusent Docker. *Visé, **PROSPECTIF** et
+**à trancher :** cette entrée contredit §6 tant que §6 n'est pas révisée ; elle n'est pas
+décidée. *Fait quand :* la décision est écrite en §6, dans un sens ou dans l'autre. Aucune
+ligne de ce chantier ne vaut engagement.
+
+**3.C Sortir ses souvenirs dans un format ouvert — ABSENT.** *Constaté :* aucun export
+d'atomes ; la sauvegarde ([`SAUVEGARDE.md`](SAUVEGARDE.md)) est un dump de base, pas un
+format lisible hors de la base. *Visé, **PROSPECTIF** :* un export et un import d'atomes
+dans un format texte documenté, lignée comprise. *Fait quand :* un aller-retour export puis
+import redonne les mêmes atomes et les mêmes liens de supersession.
+
+### Phase 4 — Extensibilité
+
+**4.A Fournisseurs interchangeables — PARTIEL.** *Constaté :* la curation passe par un
+module unique (`agents/lib/claude_cli.py:249`, disponibilité testée sans dépense à
+`:93`) ; les embeddings ne parlent qu'à un seul fournisseur
+(`app/services/embeddings.py:127`). Les garde-fous de dépense **existent**
+(`agents/lib/spend_guard.py:560`, `app/services/llm_budget.py:35`). *Visé, **PROSPECTIF** :*
+une interface de fournisseur que ces deux modules implémentent, sans retirer les garde-fous.
+*Fait quand :* un fournisseur factice passe la suite et les garde-fous de dépense le
+comptent comme les autres.
+
+**4.B Une porte standard pour les clients — ABSENT.** *Constaté :* aucun serveur MCP dans
+`app/` ni `agents/` (`grep -rni "FastMCP" app agents` ne rend rien). L'API HTTP (`app/routers/atoms.py:793`) est la seule porte. *Visé,
+**PROSPECTIF** :* une façade en lecture seule du rappel, derrière le même jeton. *Fait
+quand :* un test appelle la façade et obtient le même résultat que `POST /v1/atoms/recall`.
+
+### Phase 5 — Communauté
+
+**5.A Un modèle de menace complet — PARTIEL.** *Constaté :* `SECURITY.md` existe (procédure
+de signalement, ce que le produit protège ou non) ; le modèle de menace écrit ne couvre que
+la suite de tests (`SECURITY.md:63-66`, [`LIMITES-CONNUES.md`](LIMITES-CONNUES.md) §3.2).
+*Visé, **PROSPECTIF** :* un modèle de menace de l'API, du cockpit et des sauvegardes.
+*Fait quand :* chaque garantie citée dans `SECURITY.md` renvoie à un test qui la vérifie.
+
+**5.B Contribuer un cas de benchmark — PARTIEL.** *Constaté :* un guide de contribution
+existe ([`CONTRIBUER.md`](CONTRIBUER.md)) et la CI joue la suite (`.github/workflows/tests.yml:66`).
+Rien ne décrit comment proposer une requête d'évaluation. *Visé, **PROSPECTIF** :* un gabarit
+de contribution pour les cas où le rappel échoue. *Fait quand :* une contribution de ce type
+est acceptée sans modifier de code.
+
+| Chantier | Constaté |
+|---|---|
+| 1.A contradictions | PARTIEL |
+| 1.B statuts | PARTIEL |
+| 1.C avertissement de sortie du rappel | PARTIEL |
+| 1.D fraîcheur / provenance | ABSENT / PARTIEL |
+| 2.A banc qui montre les échecs | PARTIEL |
+| 2.B confiance dans le rappel | ABSENT |
+| 2.C expliquer un rappel | PARTIEL |
+| 3.A file de revue | PARTIEL |
+| 3.B conteneur | ABSENT |
+| 3.C export ouvert | ABSENT |
+| 4.A fournisseurs | PARTIEL |
+| 4.B porte standard | ABSENT |
+| 5.A modèle de menace | PARTIEL |
+| 5.B cas de benchmark | PARTIEL |
+
+---
+
 ## 7. Comment cette feuille de route est tenue
 
 Une ligne ne change de statut que lorsque **quelqu'un l'a exécutée**. « Écrit, non
