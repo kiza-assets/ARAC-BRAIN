@@ -310,6 +310,7 @@ ARAC_ALLOW_PAID_AI=0            # interrupteur 1 sur 2 ; le second vit EN BASE
 | `ARAC_CURATOR_MODEL` | celui du code | quel modèle lit vos conversations | un modèle plus petit coûte moins **et extrait moins**. Le rapport n'est pas linéaire : mesurez avant de descendre. |
 | `ARAC_PACK_TOKEN_BUDGET` | `80000` | le plafond de jetons par cycle — **le frein principal**. Une valeur plus grande est ramenée à `135000`, plafond dur du code | trop haut : chaque échec coûte cher, car on perd toute la tranche d'un coup. |
 | `ARAC_PACK_MAX_CONVS` | `0` = illimité (le pack s'arrête de lui-même à 20 conversations examinées) | combien de conversations sont ADMISES dans une tranche. **Le code recommande `4`** : l'enquête sur les quarantaines n'a vu aucune attribution croisée sur les paquets de 3 à 5 conversations, et une sur deux au-delà de 6 | même logique |
+| `ARAC_PACK_MAX_MSGS_PER_CONV` | `0` = illimité | combien de messages d'UNE conversation entrent dans une tranche. Au-delà, la tranche est coupée et marquée tronquée : le reste est repris au cycle suivant. Une valeur illisible ou négative revient à `0`. Cible la taille d'une conversation géante, là où `ARAC_PACK_MAX_CONVS` cible leur nombre | trop bas : il faut plus de cycles pour digérer une longue conversation. |
 | `ARAC_CURATOR_QUIET_HOURS` | *(vide)* | heures pendant lesquelles le cerveau ne digère pas | rien ne casse ; les cycles tombant dans la fenêtre sont sautés |
 
 **La leçon derrière `ARAC_PACK_TOKEN_BUDGET`.** Sur le cerveau de référence, **36 % des

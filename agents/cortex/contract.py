@@ -22,6 +22,7 @@ import json
 import logging
 import os
 import re
+import unicodedata
 from typing import Any
 
 logger = logging.getLogger("arac.cortex.contract")
@@ -130,6 +131,7 @@ ALLOWED_KINDS = frozenset({
 FORBIDDEN_ATOM_FIELDS = frozenset({"node_id", "confidence", "audit_source", "source_ref"})
 
 _KEY_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{0,126}[a-z0-9]$")
+_KEY_MAX_LEN = 128
 _VALUE_MAX_LEN = 6000
 _MAX_TAGS = 8
 
@@ -803,6 +805,15 @@ def validate_document(
     return cleaned_doc
 
 
+def normalize_atom_key(key: str) -> str:
+    """Normalise une clé d'atome : NFKD, sans diacritiques, minuscules, tout
+    caractère hors [a-z0-9] -> '-', '-' répétés réduits, bords retirés, 128 max."""
+    decomposed = unicodedata.normalize("NFKD", key)
+    stripped = "".join(c for c in decomposed if not unicodedata.combining(c))
+    dashed = re.sub(r"[^a-z0-9]+", "-", stripped.lower())
+    return dashed.strip("-")[:_KEY_MAX_LEN].rstrip("-")
+
+
 def _validate_atom(
     atom: object,
     *,
@@ -834,7 +845,17 @@ def _validate_atom(
 
     key = atom.get("key")
     if not isinstance(key, str) or not _KEY_PATTERN.match(key):
-        errors.append(f"{prefix}.key_invalid:{key!r}")
+        normalized = normalize_atom_key(key) if isinstance(key, str) else ""
+        if normalized and _KEY_PATTERN.match(normalized):
+            # Clé récupérable (majuscules/accents/séparateurs) : on l'utilise
+            # plutôt que de quarantiner le run entier.
+            raw_sha8 = _sha8(key)
+            _log("cortex.contract.key_normalized", code="key_normalized",
+                 run_ref=run_ref, conversation_uid=conv_uid, atom_path=prefix,
+                 raw_sha8=raw_sha8, normalized_sha8=_sha8(normalized))
+            key = normalized
+        else:
+            errors.append(f"{prefix}.key_invalid:{key!r}")
 
     value = atom.get("value")
     if not isinstance(value, str) or not value or len(value) > _VALUE_MAX_LEN:

@@ -20,6 +20,7 @@ from agents.cortex.contract import (
     MAX_STDOUT_BYTES,
     ContractError,
     extract_json_object,
+    normalize_atom_key,
     validate_document,
 )
 
@@ -200,7 +201,7 @@ def test_validate_kind_banni_agent_message():
     assert any("kind_forbidden" in e for e in exc.value.errors)
 
 
-@pytest.mark.parametrize("bad_key", ["Majuscules-Interdites", "a", "-commence-par-tiret", "finit-par-tiret-"])
+@pytest.mark.parametrize("bad_key", ["a", "!!!", ""])
 def test_validate_key_invalide(bad_key):
     doc = _doc(conversations=[
         {"conversation_uid": "conv-1", "atoms": [_atom(key=bad_key)], "skips": []}
@@ -208,6 +209,40 @@ def test_validate_key_invalide(bad_key):
     with pytest.raises(ContractError) as exc:
         validate_document(doc, expected_run_ref=RUN_REF, presented=_presented(**{"conv-1": [1, 2, 3]}))
     assert any("key_invalid" in e for e in exc.value.errors)
+
+
+@pytest.mark.parametrize("raw,expected", [
+    ("snapshot-catalogue-sessionStorage-stale", "snapshot-catalogue-sessionstorage-stale"),
+    ("rideau-hermétique-juge-résolution-et-texte", "rideau-hermetique-juge-resolution-et-texte"),
+    ("docs-annonçaient-fuite-journal", "docs-annoncaient-fuite-journal"),
+    ("a__b  c", "a-b-c"),
+    ("-commence-par-tiret", "commence-par-tiret"),
+    ("finit-par-tiret-", "finit-par-tiret"),
+    ("", ""),
+    ("éàç", "eac"),
+    ("!!!", ""),
+])
+def test_normalize_atom_key(raw, expected):
+    assert normalize_atom_key(raw) == expected
+
+
+def test_normalize_atom_key_tronque_sans_tiret_final():
+    out = normalize_atom_key("a" * 127 + "-bbb")
+    assert len(out) <= 128 and not out.endswith("-") and out == "a" * 127
+    assert len(normalize_atom_key("x" * 300)) == 128
+
+
+def test_validate_key_accentuee_normalisee_avec_warning(caplog):
+    doc = _doc(conversations=[
+        {"conversation_uid": "conv-1", "atoms": [_atom(key="docs-annonçaient-Fuite")], "skips": []}
+    ])
+    with caplog.at_level("INFO"):
+        cleaned = validate_document(doc, expected_run_ref=RUN_REF, presented=_presented(**{"conv-1": [1, 2, 3]}))
+    assert cleaned["conversations"][0]["atoms"][0]["key"] == "docs-annoncaient-fuite"
+    # La clé brute (venue du LLM) ne part jamais en clair dans le journal.
+    assert any("key_normalized" in r.getMessage() and "raw_sha8" in r.getMessage()
+               and "docs-annonçaient-Fuite" not in r.getMessage()
+               for r in caplog.records)
 
 
 def test_validate_value_trop_longue():
