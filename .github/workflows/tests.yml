@@ -14,10 +14,13 @@
 # secret : la suite est hermétique par conception, et une CI qui aurait
 # besoin d'une clé d'API serait une CI qu'on ne peut pas exécuter en local.
 #
-# ⚠ NON OBSERVÉ : ce fichier n'a jamais été exécuté par un exécuteur GitHub.
-# Les commandes qu'il enchaîne, elles, ont été jouées à la main sur une copie
-# du dépôt privée de ses fichiers engendrés — 1287 passed, 221 skipped,
-# 5 xfailed. Si le premier passage échoue, c'est ici qu'il faut regarder.
+# ÉTAT : ce fichier a déjà tourné sur un exécuteur GitHub (journal du
+# 2026-08-14) et y a échoué pour deux raisons de machine, pas de code :
+# l'encodage tiktoken absent du cache d'un exécuteur nu (voir l'étape
+# « encodage tiktoken »), et un Python installé hors de /usr (voir
+# tests/test_la_porte_du_sous_processus_est_fermee.py). Les correctifs sont dans
+# le dépôt ; le premier passage vert est attendu au prochain push, et n'est pas
+# encore observé.
 # ============================================================================
 
 name: tests
@@ -61,6 +64,15 @@ jobs:
         run: |
           cp config/scopes.example.toml config/scopes.toml
           python bootstrap/generate_scopes.py
+
+      # La suite est hermétique : un test qui ouvre une socket est REFUSÉ. Or
+      # tiktoken télécharge son encodage au premier usage (cl100k_base, utilisé
+      # par la constitution et la recette de représentation) et un exécuteur nu
+      # n'a pas de cache. On le remplit donc ICI, hors de la suite, une fois ;
+      # les tests le lisent ensuite sans réseau. Le test reste le vrai test :
+      # il compte avec le vrai encodage.
+      - name: encodage tiktoken (cache, hors suite)
+        run: python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')"
 
       - name: tests
         run: python -m pytest tests/ -q

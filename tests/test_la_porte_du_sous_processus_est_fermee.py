@@ -867,7 +867,7 @@ def test_os_system_et_os_popen_sont_lus_en_entier():
         os.popen("cat README.md ; /usr/bin/hostname")
 
 
-def test_un_lien_symbolique_ne_deguise_pas_un_binaire_de_l_hote(tmp_path):
+def test_un_lien_symbolique_ne_deguise_pas_un_binaire_de_l_hote(tmp_path, monkeypatch):
     """Le nom du lien ment ; le fichier au bout du lien dit vrai.
 
     Un lien nommé `cat` sous `tmp_path` passait deux contrôles à la fois : son
@@ -879,6 +879,15 @@ def test_un_lien_symbolique_ne_deguise_pas_un_binaire_de_l_hote(tmp_path):
     if not os.path.exists(reel):
         pytest.skip("pas de `hostname` à cet endroit sur cette machine")
     lien = tmp_path / "cat"
+    # Poser le lien nomme `reel` : quand Python vit hors de /usr (exécuteur
+    # GitHub), le garde refuse déjà cette écriture comme une lecture de l'hôte,
+    # avant même le sous-processus que le test veut éprouver. On déclare la
+    # lecture, le temps de ce test seulement.
+    from tests.garde_hermetique import LECTURES_DECLAREES
+    monkeypatch.setitem(
+        LECTURES_DECLAREES, reel,
+        "hostname : cible d'un lien posé pour éprouver que le garde du "
+        "sous-processus juge le fichier au bout du lien, pas son nom")
     lien.symlink_to(reel)
     with pytest.raises(RefusHermetique) as pris:
         subprocess.run([str(lien)], capture_output=True)
@@ -1266,16 +1275,26 @@ def test_popen_avec_neuf_positionnels_est_controle_et_ne_plante_pas():
 # sont retrouvés au passage, ce qui est la contre-épreuve du critère.
 
 
-def test_le_critere_de_forme_retrouve_les_executants_ecrits():
+def test_le_critere_de_forme_retrouve_les_executants_ecrits(monkeypatch):
     """Le critère doit d'abord retrouver ce que la liste savait déjà."""
-    from tests.garde_hermetique import _peut_executer
+    from tests.garde_hermetique import LECTURES_DECLAREES, _peut_executer
 
     manques = []
     for nom in ("awk", "sed", "find", "tar", "git", "bash"):
         reel = shutil.which(nom, path=os.environ.get("ARAC_GARDE_PATH_HOTE", ""))
         if not reel:
             continue
-        if _peut_executer(os.path.realpath(reel)) is not True:
+        reel = os.path.realpath(reel)
+        # Lire l'ELF d'un outil de l'hôte est la mesure même. Quand Python vit
+        # hors de /usr (setup-python sur un exécuteur GitHub : /opt/hostedtoolcache),
+        # /usr est hors périmètre et le garde refuse la lecture — `_peut_executer`
+        # rend alors None et le test accuse à tort le critère. On déclare donc la
+        # lecture, le temps de ce test seulement (monkeypatch : rien ne subsiste).
+        monkeypatch.setitem(
+            LECTURES_DECLAREES, reel,
+            f"{nom} : lecture de l'en-tête ELF par le critère de forme, pour "
+            "vérifier qu'il retrouve les exécutants de la liste écrite")
+        if _peut_executer(reel) is not True:
             manques.append(nom)
     assert not manques, (
         f"le critère de forme ne voit plus {manques} comme exécutants alors que "

@@ -28,9 +28,11 @@
 # marche chez moi » : le rôle `arac_backup` manquant, découvert seulement sur
 # une grappe vierge, en est l'exemple exact.
 #
-# ⚠ NON OBSERVÉ : ce fichier n'a jamais été exécuté par un exécuteur GitHub.
-# Le harnais qu'il lance, lui, a tourné en réel sur un serveur Ubuntu. Si le
-# premier passage échoue, c'est ici qu'il faut regarder — pas dans le harnais.
+# ⚠ ÉTAT : ce fichier a tourné sur un exécuteur GitHub (journal du 2026-10-19)
+# mais n'a jamais dépassé l'étape des gardes (conftest sans ses dépendances,
+# corrigé ci-dessous) : l'étape « le critère d'acceptation, en entier » n'a
+# donc JAMAIS été observée sur GitHub. Le harnais, lui, a tourné en réel sur un
+# serveur Ubuntu. Si un passage échoue plus loin, c'est ici qu'il faut regarder.
 #
 # CE QU'IL NE FAIT PAS : dépenser. Aucune clé n'est fournie, donc l'étape 6
 # rend « PARTIEL » en nommant ce qu'elle n'a pas pu prouver. Une CI qui aurait
@@ -87,9 +89,15 @@ jobs:
       # seconde. Les jouer AVANT est la seule chose qui ait du sens : un
       # harnais dont les gardes sont cassées ne doit pas être lancé du tout.
       - name: les gardes du harnais tiennent-elles ?
+        # `tests/conftest.py` importe le moteur (psycopg, httpx, fastapi…) avant
+        # même le premier test : `pip install pytest` seul échoue à la collecte
+        # (ModuleNotFoundError: psycopg). On installe donc requirements.txt, comme
+        # `tests.yml` — mais dans un venv jetable, pour ne rien poser dans le
+        # Python du système que l'étape suivante va juger.
         run: |
-          python3 -m pip install --quiet pytest
-          python3 -m pytest tests/acceptance/test_garde_isolement.py -q
+          python3 -m venv "$RUNNER_TEMP/gardes"
+          "$RUNNER_TEMP/gardes/bin/pip" install --quiet -r requirements.txt
+          "$RUNNER_TEMP/gardes/bin/python" -m pytest tests/acceptance/test_garde_isolement.py -q
 
       - name: le critère d'acceptation, en entier
         run: sudo tests/acceptance/acceptance.sh --journal "$PWD/acceptation.log"
