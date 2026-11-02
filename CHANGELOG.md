@@ -16,12 +16,91 @@ tourné est un journal qu'on cesse de croire.
 Rubriques employées : **Ajouté**, **Modifié**, **Corrigé**, **Retiré**, **Sécurité**,
 **Connu et non résolu**.
 
-> **Les numéros de ce journal ne sont pas ceux de `pyproject.toml`.** Ce dépôt n'a encore
-> rien publié : `pyproject.toml` porte `0.1.0` et n'a pas bougé, tandis que ce journal
-> numérote les **lots de travail** déjà dans l'arbre. Les deux se rejoindront à la première
-> publication réelle. C'est dit ici plutôt que taire, parce qu'un lecteur qui compare les deux
-> et trouve un écart doit savoir lequel des deux ment — aucun : ils ne comptent pas la
+> **Les numéros de ce journal ne sont pas tous ceux de `pyproject.toml`.** La version
+> **1.0.0** a été publiée (étiquette du 2026-08-14) et `pyproject.toml` porte désormais le
+> numéro de la dernière version publiée. Les entrées **0.1.x** ci-dessous, plus anciennes,
+> numérotent en revanche des **lots de travail** antérieurs à cette publication, pas des
+> versions : elles n'ont jamais été publiées sous ces numéros. C'est dit ici pour qu'un lecteur qui compare
+> les deux et trouve un écart sache lequel des deux ment — aucun : ils ne comptent pas la
 > même chose.
+
+---
+
+## [1.1.0] — 2026-11-03
+
+Lot **les cycles ne tournent plus à vide**. Notes de version :
+[`docs/RELEASE-NOTES-1.1.0.md`](docs/RELEASE-NOTES-1.1.0.md). Mise à jour : `git pull`
+puis redémarrage des services du curateur ; aucune migration.
+
+### Corrigé
+
+- **Une clé d'atome récupérable n'est plus un motif de quarantaine.** Une clé avec
+  majuscules, accents ou séparateurs est normalisée (NFKD, minuscules, tirets, 128
+  caractères au plus) au lieu de faire quarantiner tout le run pour `key_invalid`. Le
+  journal n'en garde que les empreintes, jamais la clé brute. Une clé normalisée qui
+  retomberait sur la clé d'un autre atome du même document n'est pas normalisée : elle reste
+  `key_invalid`, comme avant. Couvert par des tests hermétiques.
+- **Fin des cycles vides en boucle.** Après deux quarantaines, la bisection ramenait la
+  tranche à une seule conversation ; si son premier message dépassait le budget, chaque
+  cycle sortait `empty` et rien ne relâchait la bisection : cycles vides et alertes sans fin.
+  La bisection ne compte plus que les reçus terminaux (`done`, `quarantined`,
+  `spawn_failed`) et se relâche dès qu'un reçu `empty` suit la dernière quarantaine
+  (`cortex.bisection_released`). **Écrit, non exercé** contre une base réelle : testé par
+  des tests hermétiques seulement.
+- **Un message géant en tête ne monopolise plus le cycle.** Il est dédoublonné dans la
+  file de revue (une ligne `pending` par message). S'il commence par un préfixe d'artefact
+  d'outillage reconnu, le curseur passe par-dessus ce seul message sous trois gardes
+  (curseur en arrière du message, message en tête de tranche, clé par conversation) ;
+  sinon la conversation est mise de côté 7 jours, curseur intouché. Les préfixes se règlent
+  par `ARAC_OVERSIZED_SKIP_PREFIXES` (12 à 120 caractères chacun ; hors de ces bornes, le
+  préfixe est refusé et journalisé). L'alerte n'affirme plus « parqué 7 j » quand la mise de
+  côté n'a touché aucune ligne. **Écrit, non exercé** : le SQL de saut et de mise de côté n'a
+  été joué que par des tests hermétiques, jamais sur une base réelle.
+
+### Sécurité
+
+- **Le jeton du bot d'alerte n'est plus écrit dans les journaux.** L'URL de l'API du bot
+  porte le jeton et `httpx`/`httpcore` la journalisaient en INFO ; leur niveau passe à
+  WARNING avant l'envoi d'une alerte. Les journaux déjà écrits avant la mise à jour peuvent
+  contenir ce jeton : s'ils ont été conservés ou partagés, renouvelez-le.
+
+### Modifié
+
+- **CI** : l'étape des gardes de l'acceptation installe `requirements.txt` dans un venv
+  jetable (le `conftest` importe le moteur dès la collecte) ; le workflow des tests remplit
+  le cache de l'encodage tiktoken avant la suite, qui compte toujours avec le vrai
+  encodage ; deux tests de la porte du sous-processus déclarent la lecture des binaires de
+  l'hôte sur un Python installé hors de `/usr`. Les en-têtes des workflows disent ce qui a
+  tourné. **Non observé** : aucun passage vert sur GitHub n'est encore constaté.
+- Un réglage de plafond de messages par conversation a été ajouté puis **retiré avant
+  publication** (il pouvait perdre des messages en silence) : il n'existe pas dans cette
+  version.
+
+### Ajouté (docs)
+
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) : section « cap après 1.1 : la confiance dans la
+  mémoire », cinq phases et quatorze chantiers, chacun avec l'état constaté, la cible
+  (PROSPECTIF) et son critère de fin.
+- [`docs/DEPANNAGE.md`](docs/DEPANNAGE.md) : « Les cycles sortent vides en boucle » ;
+  [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md) et `.env.example` :
+  `ARAC_OVERSIZED_SKIP_PREFIXES`.
+
+### Connu et non résolu
+
+- Le SQL de saut et de mise de côté (voir plus haut) n'a jamais tourné sur une vraie base.
+- Un parking de 7 jours peut être écrasé par tout autre écrivain de `next_retry_at`, et sort
+  la conversation du backlog « actionnable » du watchdog pendant ce temps ; la ligne de la
+  file de revue reste le signal humain.
+- Le premier passage vert de la CI publique n'est pas encore observé.
+- Les limites de la 1.0.0 demeurent : [`docs/LIMITES-CONNUES.md`](docs/LIMITES-CONNUES.md).
+
+---
+
+## [1.0.0] — 2026-08-14
+
+Première version publique. Voir [`docs/RELEASE-NOTES-1.0.0.md`](docs/RELEASE-NOTES-1.0.0.md)
+et le dossier [`docs/RELEASE-V1.md`](docs/RELEASE-V1.md). Ce journal n'avait pas d'entrée
+pour elle : les lots 0.1.x ci-dessous la précèdent.
 
 ---
 
